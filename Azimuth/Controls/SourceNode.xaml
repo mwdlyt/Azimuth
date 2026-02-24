@@ -1,0 +1,46 @@
+<UserControl x:Class="Azimuth.Controls.SourceNode"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="44" Height="44"
+             Cursor="Hand">
+    <Grid>
+        <!-- Glow effect -->
+        <Ellipse x:Name="GlowEllipse"
+                 Width="44" Height="44"
+                 Opacity="0.25"
+                 IsHitTestVisible="False">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Color="#7C5CFC" Offset="0.2"/>
+                    <GradientStop Color="Transparent" Offset="1.0"/>
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+
+        <!-- Main circle -->
+        <Ellipse x:Name="MainEllipse"
+                 Width="36" Height="36"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 StrokeThickness="2">
+            <Ellipse.Fill>
+                <SolidColorBrush Color="#7C5CFC" Opacity="0.3"/>
+            </Ellipse.Fill>
+            <Ellipse.Stroke>
+                <SolidColorBrush x:Name="StrokeBrush" Color="#7C5CFC"/>
+            </Ellipse.Stroke>
+        </Ellipse>
+
+        <!-- Filename label -->
+        <TextBlock x:Name="NameLabel"
+                   Text="src"
+                   FontSize="9"
+                   FontWeight="SemiBold"
+                   Foreground="#E8E8F0"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   MaxWidth="32"
+                   IsHitTestVisible="False"/>
+    </Grid>
+</UserControl>
