@@ -264,7 +264,7 @@ public class SpatialCanvas : Canvas
         foreach (var file in files)
         {
             var ext = System.IO.Path.GetExtension(file).ToLowerInvariant();
-            if (ext is not ".wav" and not ".mp3") continue;
+            if (!Services.AudioReaderFactory.IsSupported(ext)) continue;
 
             _viewModel.AddSourceFromFile(file, offsetX, offsetY);
 

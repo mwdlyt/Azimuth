@@ -108,7 +108,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         if (!File.Exists(filePath)) return;
 
         var ext = Path.GetExtension(filePath).ToLowerInvariant();
-        if (ext != ".wav" && ext != ".mp3") return;
+        if (!Services.AudioReaderFactory.IsSupported(ext)) return;
 
         var source = new AudioSource
         {

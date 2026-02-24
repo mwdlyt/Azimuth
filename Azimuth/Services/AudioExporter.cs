@@ -66,9 +66,9 @@ public static class AudioExporter
 
     private static MixingSampleProvider CreateMixerForScene(
         AzimuthScene scene, double canvasRadius,
-        out List<AudioFileReader> readers, out long maxLength)
+        out List<WaveStream> readers, out long maxLength)
     {
-        readers = new List<AudioFileReader>();
+        readers = new List<WaveStream>();
         maxLength = 0;
 
         var mixer = new MixingSampleProvider(
@@ -81,14 +81,15 @@ public static class AudioExporter
         {
             if (source.IsMuted || !File.Exists(source.FilePath)) continue;
 
-            var reader = new AudioFileReader(source.FilePath);
+            var reader = AudioReaderFactory.CreateReader(source.FilePath);
             readers.Add(reader);
 
             if (reader.Length > maxLength) maxLength = reader.Length;
 
-            ISampleProvider sp = reader.WaveFormat.Channels == 1
-                ? new MonoToStereoSampleProvider(reader)
-                : (ISampleProvider)reader;
+            ISampleProvider raw = reader.ToSampleProvider();
+            ISampleProvider sp = raw.WaveFormat.Channels == 1
+                ? new MonoToStereoSampleProvider(raw)
+                : raw;
 
             if (sp.WaveFormat.SampleRate != AppConfig.SampleRate)
                 sp = new WdlResamplingSampleProvider(sp, AppConfig.SampleRate);

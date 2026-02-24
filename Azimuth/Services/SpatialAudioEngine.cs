@@ -11,11 +11,11 @@ namespace Azimuth.Services;
 internal sealed class ActiveSource : IDisposable
 {
     public Guid Id { get; }
-    public AudioFileReader Reader { get; }
+    public WaveStream Reader { get; }
     public PanningSampleProvider Panner { get; }
     public VolumeSampleProvider Volume { get; }
 
-    public ActiveSource(Guid id, AudioFileReader reader, PanningSampleProvider panner, VolumeSampleProvider volume)
+    public ActiveSource(Guid id, WaveStream reader, PanningSampleProvider panner, VolumeSampleProvider volume)
     {
         Id = id;
         Reader = reader;
@@ -59,12 +59,15 @@ public sealed class SpatialAudioEngine : IDisposable
         {
             if (_sources.ContainsKey(source.Id)) return;
 
-            var reader = new AudioFileReader(source.FilePath);
+            var reader = AudioReaderFactory.CreateReader(source.FilePath);
+
+            // Convert WaveStream → ISampleProvider (handles all bit depths via NAudio extension)
+            ISampleProvider raw = reader.ToSampleProvider();
 
             // Ensure stereo
-            ISampleProvider sampleProvider = reader.WaveFormat.Channels == 1
-                ? new MonoToStereoSampleProvider(reader) { LeftVolume = 1f, RightVolume = 1f }
-                : (ISampleProvider)reader;
+            ISampleProvider sampleProvider = raw.WaveFormat.Channels == 1
+                ? new MonoToStereoSampleProvider(raw) { LeftVolume = 1f, RightVolume = 1f }
+                : raw;
 
             // Resample if needed
             if (sampleProvider.WaveFormat.SampleRate != AppConfig.SampleRate)
@@ -197,11 +200,11 @@ public sealed class SpatialAudioEngine : IDisposable
 /// </summary>
 internal sealed class LoopingSampleProvider : ISampleProvider
 {
-    private readonly AudioFileReader _reader;
+    private readonly WaveStream _reader;
     private readonly PanningSampleProvider _panner;
     private readonly VolumeSampleProvider _volume;
 
-    public LoopingSampleProvider(AudioFileReader reader, PanningSampleProvider panner, VolumeSampleProvider volume)
+    public LoopingSampleProvider(WaveStream reader, PanningSampleProvider panner, VolumeSampleProvider volume)
     {
         _reader = reader;
         _panner = panner;

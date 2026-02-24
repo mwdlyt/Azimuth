@@ -40,7 +40,7 @@ public static class AppConfig
     // ── File Extensions ───────────────────────────────────────
     public const string ProjectExtension = ".azimuth";
     public const string ProjectFilter = "Azimuth Scene (*.azimuth)|*.azimuth";
-    public const string AudioFilter = "Audio Files (*.wav;*.mp3)|*.wav;*.mp3";
+    public const string AudioFilter = "Audio Files (*.wav;*.mp3;*.flac;*.ogg;*.aac;*.wma;*.m4a;*.aiff;*.aif;*.opus)|*.wav;*.mp3;*.flac;*.ogg;*.aac;*.wma;*.m4a;*.aiff;*.aif;*.opus|All Files (*.*)|*.*";
     public const string ExportWavFilter = "WAV Audio (*.wav)|*.wav";
     public const string ExportMp3Filter = "MP3 Audio (*.mp3)|*.mp3";
 
