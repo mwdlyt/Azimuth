@@ -131,6 +131,7 @@ public class SpatialCanvas : Canvas
     {
         var node = new SourceNode(sourceVm);
         node.SourceDragged += OnSourceNodeDragged;
+        node.RemoveRequested += OnSourceNodeRemoveRequested;
         Children.Add(node);
         PositionNode(node);
 
@@ -143,12 +144,18 @@ public class SpatialCanvas : Canvas
     /// <summary>
     /// Removes a source node from the canvas.
     /// </summary>
+    private void OnSourceNodeRemoveRequested(SourceNode node)
+    {
+        _viewModel?.RemoveSource(node.SourceVm.Id);
+    }
+
     public void RemoveSourceNode(Guid sourceId)
     {
         var node = Children.OfType<SourceNode>().FirstOrDefault(n => n.SourceVm.Id == sourceId);
         if (node != null)
         {
             node.SourceDragged -= OnSourceNodeDragged;
+            node.RemoveRequested -= OnSourceNodeRemoveRequested;
             Children.Remove(node);
         }
 
@@ -166,6 +173,7 @@ public class SpatialCanvas : Canvas
         foreach (var n in nodes)
         {
             n.SourceDragged -= OnSourceNodeDragged;
+            n.RemoveRequested -= OnSourceNodeRemoveRequested;
             Children.Remove(n);
         }
 
@@ -266,16 +274,11 @@ public class SpatialCanvas : Canvas
             var ext = System.IO.Path.GetExtension(file).ToLowerInvariant();
             if (!Services.AudioReaderFactory.IsSupported(ext)) continue;
 
+            // Node creation is handled by MainWindow.OnSourcesChanged via CollectionChanged.
+            // Do NOT call AddSourceNode here — that causes the duplication bug.
             _viewModel.AddSourceFromFile(file, offsetX, offsetY);
 
-            // Find the newly added source VM and create a node for it
-            var newVm = _viewModel.Sources.LastOrDefault();
-            if (newVm != null)
-            {
-                AddSourceNode(newVm);
-            }
-
-            // Offset slightly for multiple files
+            // Offset slightly for multiple files dropped at once
             offsetX += 30;
             offsetY += 30;
         }

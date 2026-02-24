@@ -18,6 +18,9 @@ public partial class SourceNode : UserControl
     /// </summary>
     public event Action<SourceNode, Point>? SourceDragged;
 
+    /// <summary>Raised when the user requests removal via right-click context menu.</summary>
+    public event Action<SourceNode>? RemoveRequested;
+
     private bool _isDragging;
     private Point _dragStartMouse;
     private Point _dragStartPosition;
@@ -33,6 +36,30 @@ public partial class SourceNode : UserControl
         MouseLeftButtonDown += OnMouseDown;
         MouseLeftButtonUp += OnMouseUp;
         MouseMove += OnMouseMove;
+        MouseRightButtonUp += OnRightClick;
+    }
+
+    private void OnRightClick(object sender, MouseButtonEventArgs e)
+    {
+        var menu = new ContextMenu();
+
+        var header = new MenuItem
+        {
+            Header = SourceVm.Name,
+            IsEnabled = false,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+        };
+
+        var remove = new MenuItem { Header = "🗑  Remove source" };
+        remove.Click += (_, _) => RemoveRequested?.Invoke(this);
+
+        menu.Items.Add(header);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(remove);
+
+        ContextMenu = menu;
+        menu.IsOpen = true;
+        e.Handled = true;
     }
 
     private void ApplyColor(string hex)

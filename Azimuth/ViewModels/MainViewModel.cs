@@ -173,6 +173,13 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         HasUnsavedChanges = true;
     }
 
+    /// <summary>Remove a source by its ID (called from canvas right-click).</summary>
+    public void RemoveSource(Guid sourceId)
+    {
+        var vm = Sources.FirstOrDefault(s => s.Id == sourceId);
+        RemoveSource(vm);
+    }
+
     private void RemoveSource(AudioSourceViewModel? sourceVm)
     {
         if (sourceVm is null) return;
