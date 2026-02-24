@@ -64,10 +64,12 @@ public sealed class SpatialAudioEngine : IDisposable
             // Convert WaveStream → ISampleProvider (handles all bit depths via NAudio extension)
             ISampleProvider raw = reader.ToSampleProvider();
 
-            // Ensure stereo
-            ISampleProvider sampleProvider = raw.WaveFormat.Channels == 1
-                ? new MonoToStereoSampleProvider(raw) { LeftVolume = 1f, RightVolume = 1f }
-                : raw;
+            // PanningSampleProvider requires mono input — mix down stereo sources before panning
+            ISampleProvider sampleProvider = raw.WaveFormat.Channels switch
+            {
+                1 => raw,                                          // already mono
+                _ => new StereoToMonoSampleProvider(raw)           // mix L+R → mono
+            };
 
             // Resample if needed
             if (sampleProvider.WaveFormat.SampleRate != AppConfig.SampleRate)
@@ -229,5 +231,41 @@ internal sealed class LoopingSampleProvider : ISampleProvider
             totalRead += read;
         }
         return totalRead;
+    }
+}
+
+/// <summary>
+/// Mixes a stereo sample provider down to mono by averaging left and right channels.
+/// Required because PanningSampleProvider only accepts mono input.
+/// </summary>
+internal sealed class StereoToMonoSampleProvider : ISampleProvider
+{
+    private readonly ISampleProvider _source;
+    private float[] _sourceBuffer = Array.Empty<float>();
+
+    public WaveFormat WaveFormat { get; }
+
+    public StereoToMonoSampleProvider(ISampleProvider source)
+    {
+        if (source.WaveFormat.Channels != 2)
+            throw new ArgumentException("Source must be stereo (2 channels).", nameof(source));
+
+        _source = source;
+        WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(source.WaveFormat.SampleRate, 1);
+    }
+
+    public int Read(float[] buffer, int offset, int count)
+    {
+        int stereoCount = count * 2;
+        if (_sourceBuffer.Length < stereoCount)
+            _sourceBuffer = new float[stereoCount];
+
+        int read = _source.Read(_sourceBuffer, 0, stereoCount);
+        int monoSamples = read / 2;
+
+        for (int i = 0; i < monoSamples; i++)
+            buffer[offset + i] = (_sourceBuffer[i * 2] + _sourceBuffer[i * 2 + 1]) * 0.5f;
+
+        return monoSamples;
     }
 }

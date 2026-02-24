@@ -87,9 +87,12 @@ public static class AudioExporter
             if (reader.Length > maxLength) maxLength = reader.Length;
 
             ISampleProvider raw = reader.ToSampleProvider();
-            ISampleProvider sp = raw.WaveFormat.Channels == 1
-                ? new MonoToStereoSampleProvider(raw)
-                : raw;
+            // Mix stereo down to mono so PanningSampleProvider can handle it
+            ISampleProvider sp = raw.WaveFormat.Channels switch
+            {
+                1 => raw,
+                _ => new StereoToMonoSampleProvider(raw)
+            };
 
             if (sp.WaveFormat.SampleRate != AppConfig.SampleRate)
                 sp = new WdlResamplingSampleProvider(sp, AppConfig.SampleRate);
