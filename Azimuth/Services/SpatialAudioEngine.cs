@@ -14,6 +14,8 @@ internal sealed class ActiveSource : IDisposable
     public WaveStream Reader { get; }
     public PanningSampleProvider Panner { get; }
     public VolumeSampleProvider Volume { get; }
+    public bool IsPlaying { get; set; } = true;
+    public float LastComputedVolume { get; set; }
 
     public ActiveSource(Guid id, WaveStream reader, PanningSampleProvider panner, VolumeSampleProvider volume)
     {
@@ -61,14 +63,14 @@ public sealed class SpatialAudioEngine : IDisposable
 
             var reader = AudioReaderFactory.CreateReader(source.FilePath);
 
-            // Convert WaveStream → ISampleProvider (handles all bit depths via NAudio extension)
+            // Convert WaveStream -> ISampleProvider (handles all bit depths via NAudio extension)
             ISampleProvider raw = reader.ToSampleProvider();
 
-            // PanningSampleProvider requires mono input — mix down stereo sources before panning
+            // PanningSampleProvider requires mono input -- mix down stereo sources before panning
             ISampleProvider sampleProvider = raw.WaveFormat.Channels switch
             {
                 1 => raw,                                          // already mono
-                _ => new StereoToMonoSampleProvider(raw)           // mix L+R → mono
+                _ => new StereoToMonoSampleProvider(raw)           // mix L+R -> mono
             };
 
             // Resample if needed
@@ -92,6 +94,7 @@ public sealed class SpatialAudioEngine : IDisposable
             volume.Volume = source.IsMuted ? 0f : combinedVolume;
 
             var active = new ActiveSource(source.Id, reader, panner, volume);
+            active.LastComputedVolume = combinedVolume;
             _sources[source.Id] = active;
             _mixer.AddMixerInput(looper);
         }
@@ -125,8 +128,101 @@ public sealed class SpatialAudioEngine : IDisposable
             float pan = SpatialMath.PanValue(x, canvasRadius);
 
             active.Panner.Pan = pan;
-            active.Volume.Volume = isMuted ? 0f : combinedVolume;
+            active.LastComputedVolume = combinedVolume;
+            active.Volume.Volume = (isMuted || !active.IsPlaying) ? 0f : combinedVolume;
         }
+    }
+
+    /// <summary>
+    /// Starts playback for a single source. Starts the engine if not already playing.
+    /// </summary>
+    public void PlaySource(Guid sourceId)
+    {
+        lock (_lock)
+        {
+            if (!_sources.TryGetValue(sourceId, out var active)) return;
+            active.IsPlaying = true;
+            active.Volume.Volume = active.LastComputedVolume;
+
+            EnsurePlaying();
+        }
+    }
+
+    /// <summary>
+    /// Pauses a single source (preserves position, sets volume to 0).
+    /// </summary>
+    public void PauseSource(Guid sourceId)
+    {
+        lock (_lock)
+        {
+            if (!_sources.TryGetValue(sourceId, out var active)) return;
+            active.IsPlaying = false;
+            active.Volume.Volume = 0f;
+        }
+    }
+
+    /// <summary>
+    /// Returns whether a specific source is currently playing.
+    /// </summary>
+    public bool IsSourcePlaying(Guid sourceId)
+    {
+        lock (_lock)
+        {
+            return _sources.TryGetValue(sourceId, out var active) && active.IsPlaying;
+        }
+    }
+
+    /// <summary>
+    /// Gets the current playback position of a source.
+    /// </summary>
+    public TimeSpan GetSourcePosition(Guid sourceId)
+    {
+        lock (_lock)
+        {
+            if (!_sources.TryGetValue(sourceId, out var active)) return TimeSpan.Zero;
+            return active.Reader.CurrentTime;
+        }
+    }
+
+    /// <summary>
+    /// Gets the total duration of a source's audio file.
+    /// </summary>
+    public TimeSpan GetSourceDuration(Guid sourceId)
+    {
+        lock (_lock)
+        {
+            if (!_sources.TryGetValue(sourceId, out var active)) return TimeSpan.Zero;
+            return active.Reader.TotalTime;
+        }
+    }
+
+    /// <summary>
+    /// Seeks a source to the specified position.
+    /// </summary>
+    public void SeekSource(Guid sourceId, TimeSpan position)
+    {
+        lock (_lock)
+        {
+            if (!_sources.TryGetValue(sourceId, out var active)) return;
+            var clamped = position < TimeSpan.Zero ? TimeSpan.Zero
+                : position > active.Reader.TotalTime ? active.Reader.TotalTime
+                : position;
+            active.Reader.CurrentTime = clamped;
+        }
+    }
+
+    /// <summary>
+    /// Ensures the WasapiOut output device is running.
+    /// </summary>
+    private void EnsurePlaying()
+    {
+        if (_isPlaying) return;
+
+        _output?.Dispose();
+        _output = new WasapiOut();
+        _output.Init(_mixer);
+        _output.Play();
+        _isPlaying = true;
     }
 
     /// <summary>
@@ -136,13 +232,14 @@ public sealed class SpatialAudioEngine : IDisposable
     {
         lock (_lock)
         {
-            if (_isPlaying) return;
+            // Mark all sources as playing
+            foreach (var active in _sources.Values)
+            {
+                active.IsPlaying = true;
+                active.Volume.Volume = active.LastComputedVolume;
+            }
 
-            _output?.Dispose();
-            _output = new WasapiOut();
-            _output.Init(_mixer);
-            _output.Play();
-            _isPlaying = true;
+            EnsurePlaying();
         }
     }
 
@@ -160,10 +257,11 @@ public sealed class SpatialAudioEngine : IDisposable
             _output = null;
             _isPlaying = false;
 
-            // Reset all reader positions
+            // Reset all reader positions and mark as not playing
             foreach (var active in _sources.Values)
             {
                 active.Reader.Position = 0;
+                active.IsPlaying = false;
             }
         }
     }

@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using Azimuth.Models;
 using Azimuth.Services;
@@ -16,6 +17,7 @@ namespace Azimuth.ViewModels;
 public class MainViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly SpatialAudioEngine _engine;
+    private readonly DispatcherTimer _positionTimer;
     private string _sceneName = "Untitled Scene";
     private string? _currentFilePath;
     private bool _isPlaying;
@@ -23,6 +25,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private int _sourceColorIndex;
     private string _statusText = "Ready";
     private bool _hasUnsavedChanges;
+    private bool _isTimelinePanelVisible;
 
     public MainViewModel()
     {
@@ -40,6 +43,12 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         RemoveSourceCommand = new RelayCommand(obj => RemoveSource(obj as AudioSourceViewModel));
         ToggleMuteCommand = new RelayCommand(obj => ToggleMute(obj as AudioSourceViewModel));
         ToggleSoloCommand = new RelayCommand(obj => ToggleSolo(obj as AudioSourceViewModel));
+        ToggleSourcePlayPauseCommand = new RelayCommand(obj => ToggleSourcePlayPause(obj as AudioSourceViewModel));
+        ToggleTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelVisible = !IsTimelinePanelVisible);
+        SeekSourceCommand = new RelayCommand(obj => HandleSeek(obj));
+
+        _positionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+        _positionTimer.Tick += OnPositionTimerTick;
     }
 
     // ── Properties ──────────────────────────────────────────
@@ -84,6 +93,12 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public string WindowTitle =>
         HasUnsavedChanges ? $"Azimuth - {SceneName} *" : $"Azimuth - {SceneName}";
 
+    public bool IsTimelinePanelVisible
+    {
+        get => _isTimelinePanelVisible;
+        set { _isTimelinePanelVisible = value; OnPropertyChanged(); }
+    }
+
     // ── Commands ─────────────────────────────────────────────
 
     public ICommand NewSceneCommand { get; }
@@ -97,6 +112,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public ICommand RemoveSourceCommand { get; }
     public ICommand ToggleMuteCommand { get; }
     public ICommand ToggleSoloCommand { get; }
+    public ICommand ToggleSourcePlayPauseCommand { get; }
+    public ICommand ToggleTimelinePanelCommand { get; }
+    public ICommand SeekSourceCommand { get; }
 
     // ── Source Management ────────────────────────────────────
 
@@ -123,6 +141,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         Sources.Add(vm);
 
         _engine.AddSource(source, _canvasRadius);
+
+        // Set duration from engine
+        vm.Duration = _engine.GetSourceDuration(vm.Id);
 
         if (IsPlaying)
         {
@@ -185,12 +206,54 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    // ── Per-Source Playback ──────────────────────────────────
+
+    private void ToggleSourcePlayPause(AudioSourceViewModel? sourceVm)
+    {
+        if (sourceVm is null) return;
+
+        if (sourceVm.IsPlaying)
+        {
+            _engine.PauseSource(sourceVm.Id);
+            sourceVm.IsPlaying = false;
+        }
+        else
+        {
+            _engine.PlaySource(sourceVm.Id);
+            sourceVm.IsPlaying = true;
+            IsPlaying = true;
+            _positionTimer.Start();
+        }
+    }
+
+    /// <summary>
+    /// Handles seek from the timeline panel. Parameter is a Tuple(Guid, double).
+    /// </summary>
+    public void SeekSource(Guid sourceId, double fraction)
+    {
+        var sourceVm = Sources.FirstOrDefault(s => s.Id == sourceId);
+        if (sourceVm is null) return;
+
+        var time = sourceVm.FractionToTime(fraction);
+        _engine.SeekSource(sourceId, time);
+        sourceVm.CurrentPosition = time;
+    }
+
+    private void HandleSeek(object? obj)
+    {
+        if (obj is Tuple<Guid, double> t)
+            SeekSource(t.Item1, t.Item2);
+    }
+
     // ── Playback ─────────────────────────────────────────────
 
     private void PlayAll()
     {
         _engine.Play();
         IsPlaying = true;
+        foreach (var s in Sources)
+            s.IsPlaying = true;
+        _positionTimer.Start();
         StatusText = "Playing";
     }
 
@@ -198,7 +261,34 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         _engine.Stop();
         IsPlaying = false;
+        _positionTimer.Stop();
+        foreach (var s in Sources)
+        {
+            s.IsPlaying = false;
+            s.CurrentPosition = TimeSpan.Zero;
+        }
         StatusText = "Stopped";
+    }
+
+    // ── Position Timer ───────────────────────────────────────
+
+    private void OnPositionTimerTick(object? sender, EventArgs e)
+    {
+        if (!_engine.IsPlaying)
+        {
+            _positionTimer.Stop();
+            return;
+        }
+
+        foreach (var s in Sources)
+        {
+            if (s.IsPlaying)
+            {
+                s.CurrentPosition = _engine.GetSourcePosition(s.Id);
+                if (s.Duration == TimeSpan.Zero)
+                    s.Duration = _engine.GetSourceDuration(s.Id);
+            }
+        }
     }
 
     // ── File Operations ──────────────────────────────────────
@@ -206,6 +296,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private void NewScene()
     {
         _engine.StopAll();
+        _positionTimer.Stop();
         Sources.Clear();
         IsPlaying = false;
         _currentFilePath = null;
@@ -229,6 +320,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         try
         {
             _engine.StopAll();
+            _positionTimer.Stop();
             Sources.Clear();
             IsPlaying = false;
             _sourceColorIndex = 0;
@@ -244,6 +336,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
                 var vm = new AudioSourceViewModel(source) { CanvasRadius = _canvasRadius };
                 Sources.Add(vm);
                 _engine.AddSource(source, _canvasRadius);
+                vm.Duration = _engine.GetSourceDuration(vm.Id);
                 _sourceColorIndex++;
             }
 
@@ -356,6 +449,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public void Dispose()
     {
+        _positionTimer.Stop();
         _engine.Dispose();
     }
 }

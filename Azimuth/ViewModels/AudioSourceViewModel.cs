@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Azimuth.Models;
 using Azimuth.Services;
+using NAudio.Wave;
 
 namespace Azimuth.ViewModels;
 
@@ -13,10 +14,15 @@ public class AudioSourceViewModel : INotifyPropertyChanged
 {
     private readonly AudioSource _model;
     private double _canvasRadius = AppConfig.DefaultCanvasRadius;
+    private bool _isPlaying;
+    private TimeSpan _duration;
+    private TimeSpan _currentPosition;
+    private double[]? _waveformSamples;
 
     public AudioSourceViewModel(AudioSource model)
     {
         _model = model;
+        _ = LoadWaveformAsync(model.FilePath);
     }
 
     public Guid Id => _model.Id;
@@ -99,6 +105,103 @@ public class AudioSourceViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(DistancePercent));
             OnPropertyChanged(nameof(PanDisplay));
+        }
+    }
+
+    // ── Per-Source Playback ──────────────────────────────────
+
+    public bool IsPlaying
+    {
+        get => _isPlaying;
+        set
+        {
+            _isPlaying = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(PlayPauseIcon));
+        }
+    }
+
+    public string PlayPauseIcon => _isPlaying ? "Pause24" : "Play24";
+
+    // ── Timeline / Scrubber ─────────────────────────────────
+
+    public TimeSpan Duration
+    {
+        get => _duration;
+        set { _duration = value; OnPropertyChanged(); }
+    }
+
+    public TimeSpan CurrentPosition
+    {
+        get => _currentPosition;
+        set
+        {
+            _currentPosition = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(PositionFraction));
+        }
+    }
+
+    public double PositionFraction =>
+        _duration.TotalSeconds > 0 ? _currentPosition.TotalSeconds / _duration.TotalSeconds : 0.0;
+
+    public double[]? WaveformSamples
+    {
+        get => _waveformSamples;
+        private set { _waveformSamples = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// Converts a fractional position (0.0 to 1.0) to a TimeSpan within the source duration.
+    /// </summary>
+    public TimeSpan FractionToTime(double fraction)
+    {
+        fraction = Math.Clamp(fraction, 0.0, 1.0);
+        return TimeSpan.FromSeconds(_duration.TotalSeconds * fraction);
+    }
+
+    /// <summary>
+    /// Samples audio file to generate waveform data for timeline display.
+    /// </summary>
+    public async Task LoadWaveformAsync(string filePath)
+    {
+        try
+        {
+            var samples = await Task.Run(() =>
+            {
+                const int bucketCount = 200;
+                var result = new double[bucketCount];
+
+                using var reader = AudioReaderFactory.CreateReader(filePath);
+                ISampleProvider raw = reader.ToSampleProvider();
+                if (raw.WaveFormat.Channels == 2)
+                    raw = new Services.StereoToMonoSampleProvider(raw);
+
+                long totalSamples = reader.Length / (reader.WaveFormat.BitsPerSample / 8);
+                if (reader.WaveFormat.Channels > 1)
+                    totalSamples /= reader.WaveFormat.Channels;
+
+                int samplesPerBucket = Math.Max(1, (int)(totalSamples / bucketCount));
+                var buffer = new float[samplesPerBucket];
+
+                for (int i = 0; i < bucketCount; i++)
+                {
+                    int read = raw.Read(buffer, 0, samplesPerBucket);
+                    if (read == 0) break;
+                    float max = 0;
+                    for (int j = 0; j < read; j++)
+                        max = Math.Max(max, Math.Abs(buffer[j]));
+                    result[i] = max;
+                }
+
+                return result;
+            });
+
+            WaveformSamples = samples;
+        }
+        catch
+        {
+            WaveformSamples = new double[200];
         }
     }
 

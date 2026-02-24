@@ -28,20 +28,21 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- ═══ Title Bar ═══ -->
+        <!-- Title Bar -->
         <ui:TitleBar Grid.Row="0" Title="Azimuth" ShowMaximize="True" ShowMinimize="True">
         </ui:TitleBar>
 
-        <!-- ═══ Main Content ═══ -->
+        <!-- Main Content -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="280"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ═══ Left Sidebar ═══ -->
+            <!-- Left Sidebar -->
             <Border Grid.Column="0" Background="#161622" CornerRadius="0" Padding="16">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -53,7 +54,7 @@
 
                     <!-- App Title -->
                     <StackPanel Grid.Row="0" Margin="0,4,0,20">
-                        <TextBlock Text="✦ Azimuth" FontSize="22" FontWeight="Bold" Foreground="#7C5CFC"/>
+                        <TextBlock Text="&#x2726; Azimuth" FontSize="22" FontWeight="Bold" Foreground="#7C5CFC"/>
                         <TextBlock Text="Spatial Audio Placement" Style="{StaticResource MutedText}" Margin="0,2,0,0"/>
                     </StackPanel>
 
@@ -71,7 +72,7 @@
                                    Command="{Binding ExportMp3Command}" Margin="0,0,4,4" FontSize="11"/>
                     </WrapPanel>
 
-                    <!-- Play/Stop -->
+                    <!-- Play/Stop + Timeline Toggle -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,16">
                         <ui:Button Content="Play All" Icon="{ui:SymbolIcon Play24}" Appearance="Primary"
                                    Command="{Binding PlayAllCommand}" Margin="0,0,8,0"
@@ -79,6 +80,10 @@
                         <ui:Button Content="Stop" Icon="{ui:SymbolIcon Stop24}" Appearance="Caution"
                                    Command="{Binding StopAllCommand}" Margin="0,0,8,0"
                                    Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVis}}"/>
+                        <ui:Button Icon="{ui:SymbolIcon SlideText24}" Appearance="Secondary"
+                                   Command="{Binding ToggleTimelinePanelCommand}" Margin="0,0,0,0"
+                                   Padding="4" FontSize="10"
+                                   ToolTip="Toggle Timeline"/>
                     </StackPanel>
 
                     <!-- Source List -->
@@ -125,6 +130,19 @@
                                                 <!-- Controls row -->
                                                 <DockPanel Grid.Row="2">
                                                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                                        <!-- Play/Pause per source -->
+                                                        <ui:Button Icon="{ui:SymbolIcon Play24}" Appearance="Secondary"
+                                                                   Command="{Binding DataContext.ToggleSourcePlayPauseCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                   CommandParameter="{Binding}"
+                                                                   Padding="4" Margin="2,0" FontSize="10"
+                                                                   ToolTip="Play"
+                                                                   Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"/>
+                                                        <ui:Button Icon="{ui:SymbolIcon Pause24}" Appearance="Secondary"
+                                                                   Command="{Binding DataContext.ToggleSourcePlayPauseCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                   CommandParameter="{Binding}"
+                                                                   Padding="4" Margin="2,0" FontSize="10"
+                                                                   ToolTip="Pause"
+                                                                   Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVis}}"/>
                                                         <ui:Button Icon="{ui:SymbolIcon SpeakerMute24}" Appearance="Secondary"
                                                                    Command="{Binding DataContext.ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                    CommandParameter="{Binding}"
@@ -165,15 +183,21 @@
                 </Grid>
             </Border>
 
-            <!-- ═══ Spatial Canvas ═══ -->
+            <!-- Spatial Canvas -->
             <controls:SpatialCanvas x:Name="SpatialCanvas" Grid.Column="1"
                                      DataContext="{Binding}"
                                      Margin="8"/>
 
         </Grid>
 
-        <!-- ═══ Status Bar ═══ -->
-        <Border Grid.Row="2" Background="#161622" Padding="12,6">
+        <!-- Timeline Panel (collapsible) -->
+        <controls:TimelinePanel Grid.Row="2" x:Name="TimelinePanel"
+                                 DataContext="{Binding}"
+                                 Height="160"
+                                 Visibility="{Binding IsTimelinePanelVisible, Converter={StaticResource BoolToVis}}"/>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3" Background="#161622" Padding="12,6">
             <DockPanel>
                 <TextBlock Text="{Binding StatusText}" Foreground="#6B6B80" FontSize="11"
                            DockPanel.Dock="Left"/>
