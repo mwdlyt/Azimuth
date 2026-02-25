@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Azimuth.Controls;
 using Azimuth.ViewModels;
 using Wpf.Ui.Controls;
@@ -14,6 +15,10 @@ namespace Azimuth;
 public partial class MainWindow : FluentWindow
 {
     private readonly MainViewModel _viewModel;
+
+    // ── Drag-reorder state ───────────────────────────────────
+    private Point _dragStartPoint;
+    private int _dragSourceIndex = -1;
 
     public MainWindow()
     {
@@ -172,5 +177,128 @@ public partial class MainWindow : FluentWindow
         {
             _viewModel.UpdateSourceVolume(sourceVm);
         }
+    }
+
+    // ── Recent File Click ────────────────────────────────────
+
+    /// <summary>
+    /// Opens a recent file when its entry is clicked in the sidebar.
+    /// </summary>
+    private void RecentFile_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is string path)
+        {
+            _viewModel.OpenRecentCommand.Execute(path);
+        }
+    }
+
+    // ── Sidebar Source Drag Reorder ──────────────────────────
+
+    /// <summary>
+    /// Captures the starting position for a potential drag-reorder gesture.
+    /// </summary>
+    private void SourceList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _dragStartPoint = e.GetPosition(SourceListBox);
+
+        // Only start drag if clicking on the source border (not on buttons/sliders)
+        if (e.OriginalSource is DependencyObject dep && IsInteractiveControl(dep))
+        {
+            _dragSourceIndex = -1;
+            return;
+        }
+
+        var item = GetListBoxItemAtPoint(e.GetPosition(SourceListBox));
+        _dragSourceIndex = item is not null ? SourceListBox.ItemContainerGenerator.IndexFromContainer(item) : -1;
+    }
+
+    /// <summary>
+    /// Initiates a drag operation once the mouse has moved beyond the system threshold.
+    /// </summary>
+    private void SourceList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _dragSourceIndex < 0)
+            return;
+
+        var pos = e.GetPosition(SourceListBox);
+        var diff = pos - _dragStartPoint;
+
+        if (Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+        {
+            var data = new DataObject("SourceReorder", _dragSourceIndex);
+            DragDrop.DoDragDrop(SourceListBox, data, DragDropEffects.Move);
+            _dragSourceIndex = -1;
+        }
+    }
+
+    /// <summary>
+    /// Shows a visual cue during drag-over (accepts only reorder data).
+    /// </summary>
+    private void SourceList_DragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent("SourceReorder"))
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// Completes the reorder by computing the target index from the drop position.
+    /// </summary>
+    private void SourceList_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent("SourceReorder")) return;
+
+        int oldIndex = (int)e.Data.GetData("SourceReorder")!;
+        var target = GetListBoxItemAtPoint(e.GetPosition(SourceListBox));
+        int newIndex = target is not null
+            ? SourceListBox.ItemContainerGenerator.IndexFromContainer(target)
+            : _viewModel.Sources.Count - 1;
+
+        if (newIndex < 0) newIndex = _viewModel.Sources.Count - 1;
+
+        _viewModel.MoveSource(oldIndex, newIndex);
+    }
+
+    /// <summary>
+    /// Performs a hit-test to find the ListBoxItem at the given point.
+    /// </summary>
+    private ListBoxItem? GetListBoxItemAtPoint(Point point)
+    {
+        var hit = VisualTreeHelper.HitTest(SourceListBox, point);
+        if (hit?.VisualHit is null) return null;
+
+        DependencyObject current = hit.VisualHit;
+        while (current is not null && current is not ListBoxItem)
+        {
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return current as ListBoxItem;
+    }
+
+    /// <summary>
+    /// Returns true if the element is an interactive control (button, slider, thumb)
+    /// that should NOT initiate a drag-reorder gesture.
+    /// </summary>
+    private static bool IsInteractiveControl(DependencyObject dep)
+    {
+        DependencyObject? current = dep;
+        while (current is not null)
+        {
+            if (current is System.Windows.Controls.Primitives.ButtonBase
+                or Slider
+                or System.Windows.Controls.Primitives.Thumb)
+                return true;
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
     }
 }

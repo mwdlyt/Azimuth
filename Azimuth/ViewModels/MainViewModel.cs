@@ -35,6 +35,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         _engine = new SpatialAudioEngine();
         Sources = new ObservableCollection<AudioSourceViewModel>();
+        RecentFiles = new ObservableCollection<string>(UserSettings.Instance.RecentFiles);
 
         NewSceneCommand = new RelayCommand(NewScene);
         OpenCommand = new RelayCommand(async () => await OpenSceneAsync());
@@ -54,6 +55,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         SelectSourceCommand = new RelayCommand(obj => SelectSource(obj as AudioSourceViewModel));
         UndoCommand = new RelayCommand(Undo, () => _undoRedo.CanUndo);
         RedoCommand = new RelayCommand(Redo, () => _undoRedo.CanRedo);
+        OpenRecentCommand = new RelayCommand(obj => _ = OpenRecentAsync(obj as string));
+        OpenSettingsCommand = new RelayCommand(OpenSettings);
 
         _undoRedo.StateChanged += (_, _) =>
         {
@@ -63,6 +66,15 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
         _positionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         _positionTimer.Tick += OnPositionTimerTick;
+
+        // Apply snap default from settings
+        _isSnapToGridEnabled = UserSettings.Instance.SnapToGridDefault;
+
+        // Auto-open last scene if configured
+        if (UserSettings.Instance.OpenLastScene && RecentFiles.Count > 0 && File.Exists(RecentFiles[0]))
+        {
+            _ = OpenSceneFromPathAsync(RecentFiles[0]);
+        }
     }
 
     // ── Properties ──────────────────────────────────────────
@@ -71,6 +83,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     /// <summary>Gets the undo/redo manager for external command registration (e.g. drag moves).</summary>
     public UndoRedoManager UndoRedo => _undoRedo;
+
+    /// <summary>Recent file paths surfaced from <see cref="UserSettings"/>.</summary>
+    public ObservableCollection<string> RecentFiles { get; }
 
     public string SceneName
     {
@@ -168,6 +183,12 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     /// <summary>Redoes the last undone command.</summary>
     public ICommand RedoCommand { get; }
+
+    /// <summary>Opens a scene from a recent file path (string parameter).</summary>
+    public ICommand OpenRecentCommand { get; }
+
+    /// <summary>Opens the settings dialog.</summary>
+    public ICommand OpenSettingsCommand { get; }
 
     // ── Selection ────────────────────────────────────────────
 
@@ -297,6 +318,19 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         StatusText = $"Removed: {sourceVm.Name}";
     }
 
+    /// <summary>
+    /// Moves a source from one index to another in the sidebar list.
+    /// </summary>
+    public void MoveSource(int oldIndex, int newIndex)
+    {
+        if (oldIndex < 0 || oldIndex >= Sources.Count) return;
+        if (newIndex < 0 || newIndex >= Sources.Count) return;
+        if (oldIndex == newIndex) return;
+
+        Sources.Move(oldIndex, newIndex);
+        HasUnsavedChanges = true;
+    }
+
     private void ToggleMute(AudioSourceViewModel? sourceVm)
     {
         if (sourceVm is null) return;
@@ -415,6 +449,52 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    // ── Recent Files ─────────────────────────────────────────
+
+    /// <summary>
+    /// Refreshes the observable RecentFiles collection from <see cref="UserSettings"/>.
+    /// </summary>
+    private void RefreshRecentFiles()
+    {
+        RecentFiles.Clear();
+        foreach (var path in UserSettings.Instance.RecentFiles)
+            RecentFiles.Add(path);
+    }
+
+    /// <summary>
+    /// Records a path in settings and refreshes the UI collection.
+    /// </summary>
+    private void TrackRecentFile(string path)
+    {
+        UserSettings.Instance.AddRecentFile(path);
+        RefreshRecentFiles();
+    }
+
+    private async Task OpenRecentAsync(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return;
+        if (!File.Exists(path))
+        {
+            UserSettings.Instance.RemoveRecentFile(path);
+            RefreshRecentFiles();
+            StatusText = "File not found — removed from recents";
+            return;
+        }
+
+        await OpenSceneFromPathAsync(path);
+    }
+
+    // ── Settings ─────────────────────────────────────────────
+
+    private void OpenSettings()
+    {
+        var win = new Views.SettingsWindow { Owner = Application.Current.MainWindow };
+        win.ShowDialog();
+
+        if (win.RecentFilesCleared)
+            RefreshRecentFiles();
+    }
+
     // ── File Operations ──────────────────────────────────────
 
     private void NewScene()
@@ -443,6 +523,14 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
         if (dlg.ShowDialog() != true) return;
 
+        await OpenSceneFromPathAsync(dlg.FileName);
+    }
+
+    /// <summary>
+    /// Opens a scene file by path (shared by Open dialog and recent files).
+    /// </summary>
+    private async Task OpenSceneFromPathAsync(string filePath)
+    {
         try
         {
             _engine.StopAll();
@@ -453,8 +541,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             _undoRedo.Clear();
             SelectedSource = null;
 
-            var scene = await SceneSerializer.LoadAsync(dlg.FileName);
-            _currentFilePath = dlg.FileName;
+            var scene = await SceneSerializer.LoadAsync(filePath);
+            _currentFilePath = filePath;
             SceneName = scene.Name;
             CanvasRadius = scene.CanvasRadius;
 
@@ -469,8 +557,10 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             }
 
             HasUnsavedChanges = false;
-            StatusText = $"Opened: {Path.GetFileName(dlg.FileName)}";
+            StatusText = $"Opened: {Path.GetFileName(filePath)}";
             OnPropertyChanged(nameof(WindowTitle));
+
+            TrackRecentFile(filePath);
         }
         catch (Exception ex)
         {
@@ -519,6 +609,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             HasUnsavedChanges = false;
             StatusText = $"Saved: {Path.GetFileName(path)}";
             OnPropertyChanged(nameof(WindowTitle));
+
+            TrackRecentFile(path);
         }
         catch (Exception ex)
         {
