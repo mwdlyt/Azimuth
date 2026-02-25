@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using Azimuth.Commands;
 using Azimuth.Models;
 using Azimuth.Services;
 
@@ -18,6 +19,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly SpatialAudioEngine _engine;
     private readonly DispatcherTimer _positionTimer;
+    private readonly UndoRedoManager _undoRedo = new();
     private string _sceneName = "Untitled Scene";
     private string? _currentFilePath;
     private bool _isPlaying;
@@ -27,6 +29,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private bool _hasUnsavedChanges;
     private bool _isTimelinePanelVisible;
     private bool _isSnapToGridEnabled;
+    private AudioSourceViewModel? _selectedSource;
 
     public MainViewModel()
     {
@@ -41,13 +44,22 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         ExportMp3Command = new RelayCommand(async () => await ExportAsync(true));
         PlayAllCommand = new RelayCommand(PlayAll);
         StopAllCommand = new RelayCommand(StopAll);
-        RemoveSourceCommand = new RelayCommand(obj => RemoveSource(obj as AudioSourceViewModel));
+        RemoveSourceCommand = new RelayCommand(obj => RemoveSourceUndoable(obj as AudioSourceViewModel));
         ToggleMuteCommand = new RelayCommand(obj => ToggleMute(obj as AudioSourceViewModel));
         ToggleSoloCommand = new RelayCommand(obj => ToggleSolo(obj as AudioSourceViewModel));
         ToggleSourcePlayPauseCommand = new RelayCommand(obj => ToggleSourcePlayPause(obj as AudioSourceViewModel));
         ToggleTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelVisible = !IsTimelinePanelVisible);
         ToggleSnapToGridCommand = new RelayCommand(() => IsSnapToGridEnabled = !IsSnapToGridEnabled);
         SeekSourceCommand = new RelayCommand(obj => HandleSeek(obj));
+        SelectSourceCommand = new RelayCommand(obj => SelectSource(obj as AudioSourceViewModel));
+        UndoCommand = new RelayCommand(Undo, () => _undoRedo.CanUndo);
+        RedoCommand = new RelayCommand(Redo, () => _undoRedo.CanRedo);
+
+        _undoRedo.StateChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(CanUndo));
+            OnPropertyChanged(nameof(CanRedo));
+        };
 
         _positionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         _positionTimer.Tick += OnPositionTimerTick;
@@ -56,6 +68,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     // ── Properties ──────────────────────────────────────────
 
     public ObservableCollection<AudioSourceViewModel> Sources { get; }
+
+    /// <summary>Gets the undo/redo manager for external command registration (e.g. drag moves).</summary>
+    public UndoRedoManager UndoRedo => _undoRedo;
 
     public string SceneName
     {
@@ -107,6 +122,26 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         set { _isSnapToGridEnabled = value; OnPropertyChanged(); }
     }
 
+    /// <summary>The currently selected source on the canvas, or null if none.</summary>
+    public AudioSourceViewModel? SelectedSource
+    {
+        get => _selectedSource;
+        set
+        {
+            if (_selectedSource == value) return;
+            if (_selectedSource != null) _selectedSource.IsSelected = false;
+            _selectedSource = value;
+            if (_selectedSource != null) _selectedSource.IsSelected = true;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Whether an undo operation is available.</summary>
+    public bool CanUndo => _undoRedo.CanUndo;
+
+    /// <summary>Whether a redo operation is available.</summary>
+    public bool CanRedo => _undoRedo.CanRedo;
+
     // ── Commands ─────────────────────────────────────────────
 
     public ICommand NewSceneCommand { get; }
@@ -125,10 +160,56 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public ICommand SeekSourceCommand { get; }
     public ICommand ToggleSnapToGridCommand { get; }
 
+    /// <summary>Command to select a source (parameter: AudioSourceViewModel or null).</summary>
+    public ICommand SelectSourceCommand { get; }
+
+    /// <summary>Undoes the last command.</summary>
+    public ICommand UndoCommand { get; }
+
+    /// <summary>Redoes the last undone command.</summary>
+    public ICommand RedoCommand { get; }
+
+    // ── Selection ────────────────────────────────────────────
+
+    /// <summary>Selects a source, deselecting all others. Pass null to deselect all.</summary>
+    public void SelectSource(AudioSourceViewModel? sourceVm)
+    {
+        SelectedSource = sourceVm;
+    }
+
+    /// <summary>Deselects all sources.</summary>
+    public void DeselectAll()
+    {
+        SelectedSource = null;
+    }
+
+    /// <summary>Removes the currently selected source via the undo system.</summary>
+    public void RemoveSelectedSource()
+    {
+        if (_selectedSource != null)
+            RemoveSourceUndoable(_selectedSource);
+    }
+
+    // ── Undo/Redo ────────────────────────────────────────────
+
+    /// <summary>Undoes the most recent command.</summary>
+    public void Undo()
+    {
+        _undoRedo.Undo();
+        HasUnsavedChanges = true;
+    }
+
+    /// <summary>Redoes the most recently undone command.</summary>
+    public void Redo()
+    {
+        _undoRedo.Redo();
+        HasUnsavedChanges = true;
+    }
+
     // ── Source Management ────────────────────────────────────
 
     /// <summary>
-    /// Adds audio files dropped onto the canvas at the given position.
+    /// Adds audio files dropped onto the canvas at the given position (with undo support).
     /// </summary>
     public void AddSourceFromFile(string filePath, double x, double y)
     {
@@ -147,20 +228,35 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         };
 
         var vm = new AudioSourceViewModel(source) { CanvasRadius = _canvasRadius };
-        Sources.Add(vm);
 
-        _engine.AddSource(source, _canvasRadius);
+        var cmd = new AddSourceCommand(source, vm, AddSourceInternal, RemoveSourceInternal);
+        _undoRedo.Execute(cmd);
 
-        // Set duration from engine
-        vm.Duration = _engine.GetSourceDuration(vm.Id);
-
-        if (IsPlaying)
-        {
-            // Source is already in the mixer, engine handles it
-        }
-
-        HasUnsavedChanges = true;
         StatusText = $"Added: {source.Name}";
+    }
+
+    /// <summary>
+    /// Internal add: adds the VM to the collection and source to the engine.
+    /// Used by AddSourceCommand.Execute and RemoveSourceCommand.Undo.
+    /// </summary>
+    private void AddSourceInternal(AudioSourceViewModel vm)
+    {
+        Sources.Add(vm);
+        _engine.AddSource(vm.Model, _canvasRadius);
+        vm.Duration = _engine.GetSourceDuration(vm.Id);
+        HasUnsavedChanges = true;
+    }
+
+    /// <summary>
+    /// Internal remove: removes the VM from the collection and source from the engine.
+    /// Used by RemoveSourceCommand.Execute and AddSourceCommand.Undo.
+    /// </summary>
+    private void RemoveSourceInternal(AudioSourceViewModel vm)
+    {
+        if (SelectedSource == vm) SelectedSource = null;
+        _engine.RemoveSource(vm.Id);
+        Sources.Remove(vm);
+        HasUnsavedChanges = true;
     }
 
     /// <summary>
@@ -174,6 +270,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         HasUnsavedChanges = true;
     }
 
+    /// <summary>
+    /// Notifies the engine that a source volume has changed.
+    /// </summary>
     public void UpdateSourceVolume(AudioSourceViewModel sourceVm)
     {
         _engine.UpdateSourcePosition(
@@ -186,15 +285,15 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public void RemoveSource(Guid sourceId)
     {
         var vm = Sources.FirstOrDefault(s => s.Id == sourceId);
-        RemoveSource(vm);
+        RemoveSourceUndoable(vm);
     }
 
-    private void RemoveSource(AudioSourceViewModel? sourceVm)
+    /// <summary>Removes a source via the undo system.</summary>
+    private void RemoveSourceUndoable(AudioSourceViewModel? sourceVm)
     {
         if (sourceVm is null) return;
-        _engine.RemoveSource(sourceVm.Id);
-        Sources.Remove(sourceVm);
-        HasUnsavedChanges = true;
+        var cmd = new RemoveSourceCommand(sourceVm.Model, sourceVm, AddSourceInternal, RemoveSourceInternal);
+        _undoRedo.Execute(cmd);
         StatusText = $"Removed: {sourceVm.Name}";
     }
 
@@ -263,6 +362,15 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     // ── Playback ─────────────────────────────────────────────
 
+    /// <summary>Toggles between play and stop.</summary>
+    public void TogglePlayStop()
+    {
+        if (IsPlaying)
+            StopAll();
+        else
+            PlayAll();
+    }
+
     private void PlayAll()
     {
         _engine.Play();
@@ -317,6 +425,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         IsPlaying = false;
         _currentFilePath = null;
         _sourceColorIndex = 0;
+        _undoRedo.Clear();
+        SelectedSource = null;
         SceneName = "Untitled Scene";
         HasUnsavedChanges = false;
         StatusText = "New scene";
@@ -340,6 +450,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             Sources.Clear();
             IsPlaying = false;
             _sourceColorIndex = 0;
+            _undoRedo.Clear();
+            SelectedSource = null;
 
             var scene = await SceneSerializer.LoadAsync(dlg.FileName);
             _currentFilePath = dlg.FileName;

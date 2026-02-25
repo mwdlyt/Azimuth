@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Azimuth.Commands;
 using Azimuth.Models;
 using Azimuth.ViewModels;
 
@@ -34,6 +35,7 @@ public class SpatialCanvas : Canvas
         DragOver += OnDragOver;
         SizeChanged += OnSizeChanged;
         Loaded += OnLoaded;
+        MouseLeftButtonDown += OnCanvasMouseDown;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -45,6 +47,26 @@ public class SpatialCanvas : Canvas
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
         Rebuild();
+    }
+
+    /// <summary>
+    /// Click on empty canvas space deselects all sources.
+    /// </summary>
+    private void OnCanvasMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        // Only deselect if the click is on the canvas itself (not on a SourceNode)
+        if (e.OriginalSource == this || e.OriginalSource is Ellipse || e.OriginalSource is TextBlock)
+        {
+            // Check that we didn't hit a SourceNode
+            var hit = e.OriginalSource as DependencyObject;
+            while (hit != null && hit != this)
+            {
+                if (hit is SourceNode) return;
+                hit = VisualTreeHelper.GetParent(hit);
+            }
+
+            _viewModel?.DeselectAll();
+        }
     }
 
     /// <summary>
@@ -143,7 +165,10 @@ public class SpatialCanvas : Canvas
     {
         var node = new SourceNode(sourceVm);
         node.SourceDragged += OnSourceNodeDragged;
+        node.DragStarted += OnSourceNodeDragStarted;
+        node.DragEnded += OnSourceNodeDragEnded;
         node.RemoveRequested += OnSourceNodeRemoveRequested;
+        node.Clicked += OnSourceNodeClicked;
         Children.Add(node);
         PositionNode(node);
 
@@ -161,13 +186,24 @@ public class SpatialCanvas : Canvas
         _viewModel?.RemoveSource(node.SourceVm.Id);
     }
 
+    /// <summary>
+    /// Handles a click (non-drag) on a source node — selects it.
+    /// </summary>
+    private void OnSourceNodeClicked(SourceNode node)
+    {
+        _viewModel?.SelectSource(node.SourceVm);
+    }
+
     public void RemoveSourceNode(Guid sourceId)
     {
         var node = Children.OfType<SourceNode>().FirstOrDefault(n => n.SourceVm.Id == sourceId);
         if (node != null)
         {
             node.SourceDragged -= OnSourceNodeDragged;
+            node.DragStarted -= OnSourceNodeDragStarted;
+            node.DragEnded -= OnSourceNodeDragEnded;
             node.RemoveRequested -= OnSourceNodeRemoveRequested;
+            node.Clicked -= OnSourceNodeClicked;
             Children.Remove(node);
         }
 
@@ -185,12 +221,27 @@ public class SpatialCanvas : Canvas
         foreach (var n in nodes)
         {
             n.SourceDragged -= OnSourceNodeDragged;
+            n.DragStarted -= OnSourceNodeDragStarted;
+            n.DragEnded -= OnSourceNodeDragEnded;
             n.RemoveRequested -= OnSourceNodeRemoveRequested;
+            n.Clicked -= OnSourceNodeClicked;
             Children.Remove(n);
         }
 
         var lines = Children.OfType<Line>().Where(l => l.Tag is Guid).ToList();
         foreach (var l in lines) Children.Remove(l);
+    }
+
+    /// <summary>
+    /// Repositions a source node on the canvas and updates its connection line.
+    /// Called by MainWindow when an undo/redo changes a source's position.
+    /// </summary>
+    public void RefreshNodePosition(Guid sourceId)
+    {
+        var node = Children.OfType<SourceNode>().FirstOrDefault(n => n.SourceVm.Id == sourceId);
+        if (node == null) return;
+        PositionNode(node);
+        UpdateConnectionLine(node);
     }
 
     private void PositionNode(SourceNode node)
@@ -229,6 +280,42 @@ public class SpatialCanvas : Canvas
 
         // Insert line behind nodes (at start)
         Children.Insert(0, line);
+    }
+
+    // ── Drag-start position tracking for undo ────────────────
+
+    private double _dragStartX;
+    private double _dragStartY;
+
+    private void OnSourceNodeDragStarted(SourceNode node)
+    {
+        _dragStartX = node.SourceVm.X;
+        _dragStartY = node.SourceVm.Y;
+
+        // Select the node being dragged
+        _viewModel?.SelectSource(node.SourceVm);
+    }
+
+    private void OnSourceNodeDragEnded(SourceNode node)
+    {
+        if (_viewModel == null) return;
+
+        double newX = node.SourceVm.X;
+        double newY = node.SourceVm.Y;
+
+        // Only create a move command if the position actually changed
+        if (Math.Abs(newX - _dragStartX) > 0.01 || Math.Abs(newY - _dragStartY) > 0.01)
+        {
+            var cmd = new MoveSourceCommand(
+                node.SourceVm,
+                _dragStartX, _dragStartY,
+                newX, newY,
+                vm => _viewModel.UpdateSourcePosition(vm));
+
+            // Push to undo stack without re-executing (position is already set)
+            _viewModel.UndoRedo.Execute(cmd);
+            // The Execute call sets it again (no-op since values are the same)
+        }
     }
 
     private void OnSourceNodeDragged(SourceNode node, Point canvasPos)

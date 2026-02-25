@@ -112,7 +112,23 @@
                             <ItemsControl ItemsSource="{Binding Sources}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="#1A1A2E" CornerRadius="8" Padding="10" Margin="0,0,0,6">
+                                        <Border CornerRadius="8" Padding="10" Margin="0,0,0,6"
+                                                Cursor="Hand"
+                                                MouseLeftButtonDown="SourceRow_MouseLeftButtonDown"
+                                                Tag="{Binding}">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#1A1A2E"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="#7C5CFC"/>
+                                                            <Setter Property="Background" Value="#1F1A35"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto"/>

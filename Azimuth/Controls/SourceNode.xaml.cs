@@ -1,7 +1,9 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Azimuth.Models;
 using Azimuth.ViewModels;
 
 namespace Azimuth.Controls;
@@ -11,6 +13,15 @@ namespace Azimuth.Controls;
 /// </summary>
 public partial class SourceNode : UserControl
 {
+    private static readonly SolidColorBrush SelectionGlowBrush;
+
+    static SourceNode()
+    {
+        var color = (Color)ColorConverter.ConvertFromString(AppConfig.AccentHex);
+        SelectionGlowBrush = new SolidColorBrush(color);
+        SelectionGlowBrush.Freeze();
+    }
+
     public AudioSourceViewModel SourceVm { get; }
 
     /// <summary>
@@ -18,12 +29,23 @@ public partial class SourceNode : UserControl
     /// </summary>
     public event Action<SourceNode, Point>? SourceDragged;
 
+    /// <summary>Raised when a drag operation begins (mouse down before move).</summary>
+    public event Action<SourceNode>? DragStarted;
+
+    /// <summary>Raised when a drag operation ends (mouse up after drag).</summary>
+    public event Action<SourceNode>? DragEnded;
+
     /// <summary>Raised when the user requests removal via right-click context menu.</summary>
     public event Action<SourceNode>? RemoveRequested;
 
+    /// <summary>Raised when the node is clicked without dragging (for selection).</summary>
+    public event Action<SourceNode>? Clicked;
+
     private bool _isDragging;
+    private bool _hasMoved;
     private Point _dragStartMouse;
     private Point _dragStartPosition;
+    private Color _nodeColor;
 
     public SourceNode(AudioSourceViewModel sourceVm)
     {
@@ -37,6 +59,47 @@ public partial class SourceNode : UserControl
         MouseLeftButtonUp += OnMouseUp;
         MouseMove += OnMouseMove;
         MouseRightButtonUp += OnRightClick;
+
+        // Listen for IsSelected changes to update the selection glow
+        sourceVm.PropertyChanged += OnSourceVmPropertyChanged;
+        UpdateSelectionVisual();
+    }
+
+    private void OnSourceVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AudioSourceViewModel.IsSelected))
+        {
+            UpdateSelectionVisual();
+        }
+    }
+
+    /// <summary>
+    /// Updates the glow ellipse to show an accent-colored glow when selected.
+    /// </summary>
+    private void UpdateSelectionVisual()
+    {
+        if (SourceVm.IsSelected)
+        {
+            // Show accent glow for selected state
+            GlowEllipse.Opacity = 0.6;
+            GlowEllipse.Fill = new RadialGradientBrush(
+                new GradientStopCollection
+                {
+                    new GradientStop((Color)ColorConverter.ConvertFromString(AppConfig.AccentHex), 0.0),
+                    new GradientStop(Colors.Transparent, 1.0),
+                });
+        }
+        else
+        {
+            // Restore normal glow
+            GlowEllipse.Opacity = 0.25;
+            GlowEllipse.Fill = new RadialGradientBrush(
+                new GradientStopCollection
+                {
+                    new GradientStop(_nodeColor, 0.2),
+                    new GradientStop(Colors.Transparent, 1.0),
+                });
+        }
     }
 
     private void OnRightClick(object sender, MouseButtonEventArgs e)
@@ -50,7 +113,7 @@ public partial class SourceNode : UserControl
             FontWeight = System.Windows.FontWeights.SemiBold,
         };
 
-        var remove = new MenuItem { Header = "🗑  Remove source" };
+        var remove = new MenuItem { Header = "\U0001F5D1  Remove source" };
         remove.Click += (_, _) => RemoveRequested?.Invoke(this);
 
         menu.Items.Add(header);
@@ -67,6 +130,7 @@ public partial class SourceNode : UserControl
         try
         {
             var color = (Color)ColorConverter.ConvertFromString(hex);
+            _nodeColor = color;
             StrokeBrush.Color = color;
             MainEllipse.Fill = new SolidColorBrush(color) { Opacity = 0.3 };
 
@@ -82,22 +146,23 @@ public partial class SourceNode : UserControl
 
     private static string TruncateName(string name)
     {
-        return name.Length > 6 ? name[..5] + "…" : name;
+        return name.Length > 6 ? name[..5] + "\u2026" : name;
     }
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
     {
         _isDragging = true;
+        _hasMoved = false;
         _dragStartMouse = e.GetPosition(Parent as UIElement);
 
-        var canvas = Parent as Canvas;
-        if (canvas != null)
+        if (Parent is Canvas)
         {
             _dragStartPosition = new Point(
                 Canvas.GetLeft(this) + Width / 2,
                 Canvas.GetTop(this) + Height / 2);
         }
 
+        DragStarted?.Invoke(this);
         CaptureMouse();
         e.Handled = true;
     }
@@ -108,6 +173,17 @@ public partial class SourceNode : UserControl
         {
             _isDragging = false;
             ReleaseMouseCapture();
+
+            if (_hasMoved)
+            {
+                DragEnded?.Invoke(this);
+            }
+            else
+            {
+                // Click without drag — fire Clicked for selection
+                Clicked?.Invoke(this);
+            }
+
             e.Handled = true;
         }
     }
@@ -120,10 +196,19 @@ public partial class SourceNode : UserControl
         double dx = currentMouse.X - _dragStartMouse.X;
         double dy = currentMouse.Y - _dragStartMouse.Y;
 
-        var newCenter = new Point(
-            _dragStartPosition.X + dx,
-            _dragStartPosition.Y + dy);
+        // Only count as a move if we've moved more than a small threshold
+        if (!_hasMoved && (Math.Abs(dx) > 3 || Math.Abs(dy) > 3))
+        {
+            _hasMoved = true;
+        }
 
-        SourceDragged?.Invoke(this, newCenter);
+        if (_hasMoved)
+        {
+            var newCenter = new Point(
+                _dragStartPosition.X + dx,
+                _dragStartPosition.Y + dy);
+
+            SourceDragged?.Invoke(this, newCenter);
+        }
     }
 }

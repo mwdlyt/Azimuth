@@ -18,6 +18,7 @@ public class AudioSourceViewModel : INotifyPropertyChanged
     private TimeSpan _duration;
     private TimeSpan _currentPosition;
     private double[]? _waveformSamples;
+    private bool _isSelected;
 
     public AudioSourceViewModel(AudioSource model)
     {
@@ -105,6 +106,20 @@ public class AudioSourceViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(DistancePercent));
             OnPropertyChanged(nameof(PanDisplay));
+        }
+    }
+
+    // ── Selection ────────────────────────────────────────────
+
+    /// <summary>Whether this source is currently selected on the canvas.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+            _isSelected = value;
+            OnPropertyChanged();
         }
     }
 
