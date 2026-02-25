@@ -31,6 +31,10 @@ public static class AppConfig
     public const double SourceNodeRadius = 22.0;
     public const double ListenerIconRadius = 18.0;
 
+    // ── Grid / Snap ───────────────────────────────────────────
+    public const double GridSize = 30.0;
+    public const string GridColorHex = "#151525";
+
     // ── Spatial Audio ─────────────────────────────────────────
     public const float MinVolume = 0.05f;
     public const float DistanceFalloff = 8.0f;

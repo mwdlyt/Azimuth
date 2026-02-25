@@ -26,6 +26,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private string _statusText = "Ready";
     private bool _hasUnsavedChanges;
     private bool _isTimelinePanelVisible;
+    private bool _isSnapToGridEnabled;
 
     public MainViewModel()
     {
@@ -45,6 +46,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         ToggleSoloCommand = new RelayCommand(obj => ToggleSolo(obj as AudioSourceViewModel));
         ToggleSourcePlayPauseCommand = new RelayCommand(obj => ToggleSourcePlayPause(obj as AudioSourceViewModel));
         ToggleTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelVisible = !IsTimelinePanelVisible);
+        ToggleSnapToGridCommand = new RelayCommand(() => IsSnapToGridEnabled = !IsSnapToGridEnabled);
         SeekSourceCommand = new RelayCommand(obj => HandleSeek(obj));
 
         _positionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
@@ -99,6 +101,12 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         set { _isTimelinePanelVisible = value; OnPropertyChanged(); }
     }
 
+    public bool IsSnapToGridEnabled
+    {
+        get => _isSnapToGridEnabled;
+        set { _isSnapToGridEnabled = value; OnPropertyChanged(); }
+    }
+
     // ── Commands ─────────────────────────────────────────────
 
     public ICommand NewSceneCommand { get; }
@@ -115,6 +123,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public ICommand ToggleSourcePlayPauseCommand { get; }
     public ICommand ToggleTimelinePanelCommand { get; }
     public ICommand SeekSourceCommand { get; }
+    public ICommand ToggleSnapToGridCommand { get; }
 
     // ── Source Management ────────────────────────────────────
 

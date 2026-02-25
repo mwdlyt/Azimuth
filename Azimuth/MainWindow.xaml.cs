@@ -24,6 +24,9 @@ public partial class MainWindow : FluentWindow
         // Watch source collection for add/remove to update canvas nodes
         _viewModel.Sources.CollectionChanged += OnSourcesChanged;
 
+        // Sync grid/snap state to canvas
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+
         Closed += (_, _) =>
         {
             _viewModel.Dispose();
@@ -60,6 +63,15 @@ public partial class MainWindow : FluentWindow
                     SpatialCanvas.AddSourceNode(vm);
                 }
             }
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.IsSnapToGridEnabled))
+        {
+            bool snap = _viewModel.IsSnapToGridEnabled;
+            SpatialCanvas.SetGridEnabled(visible: snap, snap: snap);
         }
     }
 

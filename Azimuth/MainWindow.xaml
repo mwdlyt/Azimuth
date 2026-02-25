@@ -81,9 +81,21 @@
                                    Command="{Binding StopAllCommand}" Margin="0,0,8,0"
                                    Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVis}}"/>
                         <ui:Button Icon="{ui:SymbolIcon SlideText24}" Appearance="Secondary"
-                                   Command="{Binding ToggleTimelinePanelCommand}" Margin="0,0,0,0"
+                                   Command="{Binding ToggleTimelinePanelCommand}" Margin="0,0,8,0"
                                    Padding="4" FontSize="10"
                                    ToolTip="Toggle Timeline"/>
+                        <!-- Grid Off state -->
+                        <ui:Button Icon="{ui:SymbolIcon Grid24}" Appearance="Secondary"
+                                   Command="{Binding ToggleSnapToGridCommand}"
+                                   Padding="4" Margin="0,0,0,0"
+                                   ToolTip="Enable Snap to Grid"
+                                   Visibility="{Binding IsSnapToGridEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"/>
+                        <!-- Grid On state -->
+                        <ui:Button Icon="{ui:SymbolIcon Grid24}" Appearance="Primary"
+                                   Command="{Binding ToggleSnapToGridCommand}"
+                                   Padding="4" Margin="0,0,0,0"
+                                   ToolTip="Disable Snap to Grid"
+                                   Visibility="{Binding IsSnapToGridEnabled, Converter={StaticResource BoolToVis}}"/>
                     </StackPanel>
 
                     <!-- Source List -->

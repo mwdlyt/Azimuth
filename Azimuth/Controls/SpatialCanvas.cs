@@ -18,6 +18,12 @@ public class SpatialCanvas : Canvas
     private MainViewModel? _viewModel;
     private double _radius;
 
+    /// <summary>When true, source nodes snap to the grid on drag.</summary>
+    public bool IsSnapToGridEnabled { get; set; }
+
+    /// <summary>When true, the grid dots are drawn on the canvas.</summary>
+    public bool IsGridVisible { get; set; }
+
     public SpatialCanvas()
     {
         AllowDrop = true;
@@ -59,6 +65,12 @@ public class SpatialCanvas : Canvas
 
         if (_viewModel != null)
             _viewModel.CanvasRadius = _radius;
+
+        // Draw grid dots (only when grid is visible)
+        if (IsGridVisible)
+        {
+            DrawGrid(cx, cy);
+        }
 
         // Draw ring guides
         foreach (double pct in AppConfig.RingPercentages)
@@ -228,6 +240,13 @@ public class SpatialCanvas : Canvas
         double relX = canvasPos.X - cx;
         double relY = canvasPos.Y - cy;
 
+        // Snap to grid if enabled (snap before clamping so grid aligns naturally)
+        if (IsSnapToGridEnabled)
+        {
+            relX = SnapToGrid(relX);
+            relY = SnapToGrid(relY);
+        }
+
         // Clamp within the circle
         double dist = Math.Sqrt(relX * relX + relY * relY);
         if (dist > _radius)
@@ -307,6 +326,49 @@ public class SpatialCanvas : Canvas
             StrokeThickness = 1,
             IsHitTestVisible = false,
         };
+    }
+
+    /// <summary>Draws a dot grid across the full canvas area.</summary>
+    private void DrawGrid(double cx, double cy)
+    {
+        double gridSize = AppConfig.GridSize;
+        var dotBrush = BrushFromHex(AppConfig.GridColorHex);
+
+        // Start from the center and work outward so grid aligns to center
+        double startX = cx % gridSize;
+        double startY = cy % gridSize;
+
+        for (double x = startX; x < ActualWidth; x += gridSize)
+        {
+            for (double y = startY; y < ActualHeight; y += gridSize)
+            {
+                var dot = new Ellipse
+                {
+                    Width = 2,
+                    Height = 2,
+                    Fill = dotBrush,
+                    IsHitTestVisible = false,
+                };
+                SetLeft(dot, x - 1);
+                SetTop(dot, y - 1);
+                Children.Add(dot);
+            }
+        }
+    }
+
+    /// <summary>Snaps a value to the nearest grid increment relative to the canvas center.</summary>
+    private static double SnapToGrid(double value)
+    {
+        double g = AppConfig.GridSize;
+        return Math.Round(value / g) * g;
+    }
+
+    /// <summary>Toggles grid visibility and snap, then redraws the canvas.</summary>
+    public void SetGridEnabled(bool visible, bool snap)
+    {
+        IsGridVisible = visible;
+        IsSnapToGridEnabled = snap;
+        Rebuild();
     }
 
     private static SolidColorBrush BrushFromHex(string hex)
