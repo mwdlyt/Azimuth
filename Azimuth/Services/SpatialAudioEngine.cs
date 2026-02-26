@@ -14,15 +14,17 @@ internal sealed class ActiveSource : IDisposable
     public WaveStream Reader { get; }
     public PanningSampleProvider Panner { get; }
     public VolumeSampleProvider Volume { get; }
+    public ISampleProvider MixerInput { get; }
     public bool IsPlaying { get; set; } = true;
     public float LastComputedVolume { get; set; }
 
-    public ActiveSource(Guid id, WaveStream reader, PanningSampleProvider panner, VolumeSampleProvider volume)
+    public ActiveSource(Guid id, WaveStream reader, PanningSampleProvider panner, VolumeSampleProvider volume, ISampleProvider mixerInput)
     {
         Id = id;
         Reader = reader;
         Panner = panner;
         Volume = volume;
+        MixerInput = mixerInput;
     }
 
     public void Dispose()
@@ -93,7 +95,7 @@ public sealed class SpatialAudioEngine : IDisposable
             panner.Pan = pan;
             volume.Volume = source.IsMuted ? 0f : combinedVolume;
 
-            var active = new ActiveSource(source.Id, reader, panner, volume);
+            var active = new ActiveSource(source.Id, reader, panner, volume, looper);
             active.LastComputedVolume = combinedVolume;
             _sources[source.Id] = active;
             _mixer.AddMixerInput(looper);
@@ -109,6 +111,7 @@ public sealed class SpatialAudioEngine : IDisposable
         {
             if (_sources.Remove(sourceId, out var active))
             {
+                _mixer.RemoveMixerInput(active.MixerInput);
                 active.Dispose();
             }
         }
