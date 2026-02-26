@@ -16,7 +16,9 @@ public static class SpatialMath
     {
         if (maxRadius <= 0) return (0f, 0f);
 
-        float distance = (float)Math.Min(Math.Sqrt(x * x + y * y) / maxRadius, 1.0);
+        // No clamp on distance — sources beyond the canvas edge still produce sound,
+        // just progressively quieter via the inverse-square falloff curve.
+        float distance = (float)(Math.Sqrt(x * x + y * y) / maxRadius);
         float volume = Math.Max(1.0f / (1.0f + distance * distance * Models.AppConfig.DistanceFalloff), Models.AppConfig.MinVolume);
         float pan = Math.Clamp((float)(x / maxRadius), -1f, 1f);
 
@@ -32,7 +34,7 @@ public static class SpatialMath
     public static float NormalizedDistance(double x, double y, double maxRadius)
     {
         if (maxRadius <= 0) return 0f;
-        return (float)Math.Min(Math.Sqrt(x * x + y * y) / maxRadius, 1.0);
+        return (float)(Math.Sqrt(x * x + y * y) / maxRadius);
     }
 
     /// <summary>

@@ -138,8 +138,10 @@ public class AudioSourceViewModel : INotifyPropertyChanged
                 // Initialize orbit center to current position when first enabled
                 _model.OrbitCenterX = _model.X;
                 _model.OrbitCenterY = _model.Y;
+                _model.OrbitAngle = 0;
                 OnPropertyChanged(nameof(OrbitCenterX));
                 OnPropertyChanged(nameof(OrbitCenterY));
+                OnPropertyChanged(nameof(OrbitAngle));
             }
             _model.OrbitEnabled = value;
             OnPropertyChanged();

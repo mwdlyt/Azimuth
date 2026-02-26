@@ -534,8 +534,14 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             source.OrbitAngle = newAngle;
 
             double angleRad = newAngle * Math.PI / 180.0;
-            source.X = source.OrbitCenterX + source.OrbitRadiusX * Math.Cos(angleRad);
-            source.Y = source.OrbitCenterY + source.OrbitRadiusY * Math.Sin(angleRad);
+            double newX = source.OrbitCenterX + source.OrbitRadiusX * Math.Cos(angleRad);
+            double newY = source.OrbitCenterY + source.OrbitRadiusY * Math.Sin(angleRad);
+
+            // Clamp to 2x canvas radius so orbits can go beyond visible area
+            // but not infinitely far (allows recovery by reducing radius)
+            double maxBound = _canvasRadius * 2.0;
+            source.X = Math.Clamp(newX, -maxBound, maxBound);
+            source.Y = Math.Clamp(newY, -maxBound, maxBound);
 
             _engine.UpdateSourcePosition(
                 source.Id, source.X, source.Y,
