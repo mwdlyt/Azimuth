@@ -97,6 +97,8 @@ public sealed class SpatialAudioEngine : IDisposable
 
             var active = new ActiveSource(source.Id, reader, panner, volume, looper);
             active.LastComputedVolume = combinedVolume;
+            active.IsPlaying = false;
+            volume.Volume = 0f; // Start silent until explicitly played
             _sources[source.Id] = active;
             _mixer.AddMixerInput(looper);
         }
