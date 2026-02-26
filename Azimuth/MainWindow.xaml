@@ -40,6 +40,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="280"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <!-- Left Sidebar -->
@@ -97,9 +98,21 @@
                         <!-- Grid On state -->
                         <ui:Button Icon="{ui:SymbolIcon Grid24}" Appearance="Primary"
                                    Command="{Binding ToggleSnapToGridCommand}"
-                                   Padding="4" Margin="0,0,0,0"
+                                   Padding="4" Margin="0,0,8,0"
                                    ToolTip="Disable Snap to Grid"
                                    Visibility="{Binding IsSnapToGridEnabled, Converter={StaticResource BoolToVis}}"/>
+                        <!-- Orbit Panel Off -->
+                        <ui:Button Icon="{ui:SymbolIcon ArrowRotateClockwise24}" Appearance="Secondary"
+                                   Command="{Binding ToggleOrbitPanelCommand}"
+                                   Padding="4" Margin="0,0,0,0"
+                                   ToolTip="Show Orbit Panel"
+                                   Visibility="{Binding IsOrbitPanelVisible, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"/>
+                        <!-- Orbit Panel On -->
+                        <ui:Button Icon="{ui:SymbolIcon ArrowRotateClockwise24}" Appearance="Primary"
+                                   Command="{Binding ToggleOrbitPanelCommand}"
+                                   Padding="4" Margin="0,0,0,0"
+                                   ToolTip="Hide Orbit Panel"
+                                   Visibility="{Binding IsOrbitPanelVisible, Converter={StaticResource BoolToVis}}"/>
                     </StackPanel>
 
                     <!-- Recent Files (hidden when empty) -->
@@ -280,6 +293,10 @@
             <controls:SpatialCanvas x:Name="SpatialCanvas" Grid.Column="1"
                                      DataContext="{Binding}"
                                      Margin="8"/>
+
+            <!-- Orbit Panel (right sidebar) -->
+            <controls:OrbitPanel x:Name="OrbitPanel" Grid.Column="2"
+                                  Visibility="{Binding IsOrbitPanelVisible, Converter={StaticResource BoolToVis}}"/>
 
         </Grid>
 

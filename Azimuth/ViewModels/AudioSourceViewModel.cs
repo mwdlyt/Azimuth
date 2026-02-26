@@ -19,6 +19,7 @@ public class AudioSourceViewModel : INotifyPropertyChanged
     private TimeSpan _currentPosition;
     private double[]? _waveformSamples;
     private bool _isSelected;
+    private bool _isOrbitDragPaused;
 
     public AudioSourceViewModel(AudioSource model)
     {
@@ -121,6 +122,105 @@ public class AudioSourceViewModel : INotifyPropertyChanged
             _isSelected = value;
             OnPropertyChanged();
         }
+    }
+
+    // ── Orbit ────────────────────────────────────────────────
+
+    /// <summary>Whether orbital motion is enabled for this source.</summary>
+    public bool OrbitEnabled
+    {
+        get => _model.OrbitEnabled;
+        set
+        {
+            if (_model.OrbitEnabled == value) return;
+            if (value && !_model.OrbitEnabled)
+            {
+                // Initialize orbit center to current position when first enabled
+                _model.OrbitCenterX = _model.X;
+                _model.OrbitCenterY = _model.Y;
+                OnPropertyChanged(nameof(OrbitCenterX));
+                OnPropertyChanged(nameof(OrbitCenterY));
+            }
+            _model.OrbitEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Horizontal radius of the elliptical orbit path in pixels.</summary>
+    public double OrbitRadiusX
+    {
+        get => _model.OrbitRadiusX;
+        set
+        {
+            _model.OrbitRadiusX = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsCircularOrbit));
+        }
+    }
+
+    /// <summary>Vertical radius of the elliptical orbit path in pixels.</summary>
+    public double OrbitRadiusY
+    {
+        get => _model.OrbitRadiusY;
+        set
+        {
+            _model.OrbitRadiusY = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsCircularOrbit));
+        }
+    }
+
+    /// <summary>Orbit speed in degrees per second.</summary>
+    public double OrbitSpeed
+    {
+        get => _model.OrbitSpeed;
+        set
+        {
+            _model.OrbitSpeed = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(OrbitSpeedDisplay));
+        }
+    }
+
+    /// <summary>Whether the orbit rotates clockwise.</summary>
+    public bool OrbitClockwise
+    {
+        get => _model.OrbitClockwise;
+        set { _model.OrbitClockwise = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>X coordinate of the orbit center relative to canvas center.</summary>
+    public double OrbitCenterX
+    {
+        get => _model.OrbitCenterX;
+        set { _model.OrbitCenterX = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Y coordinate of the orbit center relative to canvas center.</summary>
+    public double OrbitCenterY
+    {
+        get => _model.OrbitCenterY;
+        set { _model.OrbitCenterY = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Current angle in degrees along the orbit path.</summary>
+    public double OrbitAngle
+    {
+        get => _model.OrbitAngle;
+        set { _model.OrbitAngle = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Whether the orbit is circular (RadiusX == RadiusY).</summary>
+    public bool IsCircularOrbit => Math.Abs(OrbitRadiusX - OrbitRadiusY) < 0.01;
+
+    /// <summary>Formatted orbit speed display string.</summary>
+    public string OrbitSpeedDisplay => $"{(int)OrbitSpeed} deg/s";
+
+    /// <summary>Whether orbit is temporarily paused due to user dragging the node.</summary>
+    public bool IsOrbitDragPaused
+    {
+        get => _isOrbitDragPaused;
+        set { _isOrbitDragPaused = value; OnPropertyChanged(); }
     }
 
     // ── Per-Source Playback ──────────────────────────────────

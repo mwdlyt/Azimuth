@@ -19,7 +19,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly SpatialAudioEngine _engine;
     private readonly DispatcherTimer _positionTimer;
+    private readonly DispatcherTimer _orbitTimer;
     private readonly UndoRedoManager _undoRedo = new();
+    private DateTime _lastOrbitTick;
     private string _sceneName = "Untitled Scene";
     private string? _currentFilePath;
     private bool _isPlaying;
@@ -29,6 +31,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private bool _hasUnsavedChanges;
     private bool _isTimelinePanelVisible;
     private bool _isSnapToGridEnabled;
+    private bool _isOrbitPanelVisible;
     private AudioSourceViewModel? _selectedSource;
 
     public MainViewModel()
@@ -57,6 +60,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         RedoCommand = new RelayCommand(Redo, () => _undoRedo.CanRedo);
         OpenRecentCommand = new RelayCommand(obj => _ = OpenRecentAsync(obj as string));
         OpenSettingsCommand = new RelayCommand(OpenSettings);
+        ToggleOrbitPanelCommand = new RelayCommand(() => IsOrbitPanelVisible = !IsOrbitPanelVisible);
+        ToggleOrbitCommand = new RelayCommand(ToggleOrbitOnSelected);
 
         _undoRedo.StateChanged += (_, _) =>
         {
@@ -66,6 +71,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
         _positionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         _positionTimer.Tick += OnPositionTimerTick;
+
+        _orbitTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _orbitTimer.Tick += OnOrbitTimerTick;
 
         // Apply snap default from settings
         _isSnapToGridEnabled = UserSettings.Instance.SnapToGridDefault;
@@ -137,6 +145,13 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         set { _isSnapToGridEnabled = value; OnPropertyChanged(); }
     }
 
+    /// <summary>Whether the orbit settings panel is visible.</summary>
+    public bool IsOrbitPanelVisible
+    {
+        get => _isOrbitPanelVisible;
+        set { _isOrbitPanelVisible = value; OnPropertyChanged(); }
+    }
+
     /// <summary>The currently selected source on the canvas, or null if none.</summary>
     public AudioSourceViewModel? SelectedSource
     {
@@ -189,6 +204,12 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     /// <summary>Opens the settings dialog.</summary>
     public ICommand OpenSettingsCommand { get; }
+
+    /// <summary>Toggles the orbit settings panel visibility.</summary>
+    public ICommand ToggleOrbitPanelCommand { get; }
+
+    /// <summary>Toggles orbit on the selected source.</summary>
+    public ICommand ToggleOrbitCommand { get; }
 
     // ── Selection ────────────────────────────────────────────
 
@@ -449,6 +470,81 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    // ── Orbit Animation ──────────────────────────────────────
+
+    /// <summary>
+    /// Toggles orbit on the currently selected source.
+    /// </summary>
+    public void ToggleOrbitOnSelected()
+    {
+        if (_selectedSource == null) return;
+        _selectedSource.OrbitEnabled = !_selectedSource.OrbitEnabled;
+        RefreshOrbitTimer();
+        HasUnsavedChanges = true;
+    }
+
+    /// <summary>
+    /// Starts or stops the orbit timer based on whether any source has orbit enabled.
+    /// </summary>
+    public void RefreshOrbitTimer()
+    {
+        bool anyOrbiting = Sources.Any(s => s.OrbitEnabled);
+        if (anyOrbiting && !_orbitTimer.IsEnabled)
+        {
+            _lastOrbitTick = DateTime.UtcNow;
+            _orbitTimer.Start();
+        }
+        else if (!anyOrbiting && _orbitTimer.IsEnabled)
+        {
+            _orbitTimer.Stop();
+        }
+    }
+
+    /// <summary>
+    /// Called when a source is dragged manually while orbit is enabled.
+    /// Updates the orbit center to the new drag-end position.
+    /// </summary>
+    public void UpdateOrbitCenterFromDrag(AudioSourceViewModel sourceVm)
+    {
+        if (!sourceVm.OrbitEnabled) return;
+        sourceVm.OrbitCenterX = sourceVm.X;
+        sourceVm.OrbitCenterY = sourceVm.Y;
+    }
+
+    private void OnOrbitTimerTick(object? sender, EventArgs e)
+    {
+        var now = DateTime.UtcNow;
+        double deltaSeconds = (now - _lastOrbitTick).TotalSeconds;
+        _lastOrbitTick = now;
+
+        // Clamp to avoid large jumps (e.g., after suspend)
+        if (deltaSeconds > 0.1) deltaSeconds = 0.016;
+
+        foreach (var source in Sources)
+        {
+            if (!source.OrbitEnabled || source.IsOrbitDragPaused) continue;
+
+            double deltaAngle = source.OrbitSpeed * deltaSeconds * (source.OrbitClockwise ? -1.0 : 1.0);
+            double newAngle = source.OrbitAngle + deltaAngle;
+
+            // Wrap at 360 to avoid overflow
+            newAngle %= 360.0;
+            if (newAngle < 0) newAngle += 360.0;
+
+            source.OrbitAngle = newAngle;
+
+            double angleRad = newAngle * Math.PI / 180.0;
+            source.X = source.OrbitCenterX + source.OrbitRadiusX * Math.Cos(angleRad);
+            source.Y = source.OrbitCenterY + source.OrbitRadiusY * Math.Sin(angleRad);
+
+            _engine.UpdateSourcePosition(
+                source.Id, source.X, source.Y,
+                _canvasRadius, source.BaseVolume, source.IsMuted);
+        }
+
+        OrbitTick?.Invoke(this, EventArgs.Empty);
+    }
+
     // ── Recent Files ─────────────────────────────────────────
 
     /// <summary>
@@ -501,6 +597,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         _engine.StopAll();
         _positionTimer.Stop();
+        _orbitTimer.Stop();
         Sources.Clear();
         IsPlaying = false;
         _currentFilePath = null;
@@ -535,6 +632,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             _engine.StopAll();
             _positionTimer.Stop();
+            _orbitTimer.Stop();
             Sources.Clear();
             IsPlaying = false;
             _sourceColorIndex = 0;
@@ -560,6 +658,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             StatusText = $"Opened: {Path.GetFileName(filePath)}";
             OnPropertyChanged(nameof(WindowTitle));
 
+            RefreshOrbitTimer();
             TrackRecentFile(filePath);
         }
         catch (Exception ex)
@@ -660,6 +759,11 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    /// <summary>
+    /// Raised on each orbit animation tick so the UI can refresh canvas visuals.
+    /// </summary>
+    public event EventHandler? OrbitTick;
+
     // ── INotifyPropertyChanged ───────────────────────────────
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -670,6 +774,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public void Dispose()
     {
         _positionTimer.Stop();
+        _orbitTimer.Stop();
         _engine.Dispose();
     }
 }

@@ -292,6 +292,10 @@ public class SpatialCanvas : Canvas
         _dragStartX = node.SourceVm.X;
         _dragStartY = node.SourceVm.Y;
 
+        // Pause orbit during drag
+        if (node.SourceVm.OrbitEnabled)
+            node.SourceVm.IsOrbitDragPaused = true;
+
         // Select the node being dragged
         _viewModel?.SelectSource(node.SourceVm);
     }
@@ -299,6 +303,13 @@ public class SpatialCanvas : Canvas
     private void OnSourceNodeDragEnded(SourceNode node)
     {
         if (_viewModel == null) return;
+
+        // Resume orbit and update center to new drag position
+        if (node.SourceVm.OrbitEnabled)
+        {
+            node.SourceVm.IsOrbitDragPaused = false;
+            _viewModel.UpdateOrbitCenterFromDrag(node.SourceVm);
+        }
 
         double newX = node.SourceVm.X;
         double newY = node.SourceVm.Y;
@@ -456,6 +467,83 @@ public class SpatialCanvas : Canvas
         IsGridVisible = visible;
         IsSnapToGridEnabled = snap;
         Rebuild();
+    }
+
+    // ── Orbit Visualization ────────────────────────────────────
+
+    /// <summary>
+    /// Refreshes orbit path ellipses and repositions all orbiting source nodes.
+    /// Called from the orbit timer (~60fps) for smooth animation.
+    /// </summary>
+    public void RefreshOrbitVisuals()
+    {
+        if (_viewModel == null) return;
+
+        double cx = ActualWidth / 2.0;
+        double cy = ActualHeight / 2.0;
+
+        // Remove old orbit path visuals (tagged with "OrbitPath")
+        var oldPaths = Children.OfType<Ellipse>().Where(e => e.Tag is string s && s.StartsWith("OrbitPath_")).ToList();
+        foreach (var p in oldPaths) Children.Remove(p);
+
+        // Remove old direction indicators (tagged with "OrbitDot")
+        var oldDots = Children.OfType<Ellipse>().Where(e => e.Tag is string s && s.StartsWith("OrbitDot_")).ToList();
+        foreach (var d in oldDots) Children.Remove(d);
+
+        foreach (var source in _viewModel.Sources)
+        {
+            if (!source.OrbitEnabled) continue;
+
+            // Draw orbit path ellipse
+            try
+            {
+                var sourceColor = (Color)ColorConverter.ConvertFromString(source.Color);
+                sourceColor.A = 102; // 40% opacity
+
+                var pathEllipse = new Ellipse
+                {
+                    Width = source.OrbitRadiusX * 2,
+                    Height = source.OrbitRadiusY * 2,
+                    Stroke = new SolidColorBrush(sourceColor),
+                    StrokeThickness = 1.5,
+                    StrokeDashArray = new DoubleCollection { 4, 4 },
+                    Fill = Brushes.Transparent,
+                    IsHitTestVisible = false,
+                    Tag = $"OrbitPath_{source.Id}",
+                };
+
+                SetLeft(pathEllipse, cx + source.OrbitCenterX - source.OrbitRadiusX);
+                SetTop(pathEllipse, cy + source.OrbitCenterY - source.OrbitRadiusY);
+                Children.Insert(0, pathEllipse);
+
+                // Draw small direction dot on the path ahead of current position
+                double dotAngle = source.OrbitAngle + (source.OrbitClockwise ? -15 : 15);
+                double dotRad = dotAngle * Math.PI / 180.0;
+                double dotX = cx + source.OrbitCenterX + source.OrbitRadiusX * Math.Cos(dotRad);
+                double dotY = cy + source.OrbitCenterY + source.OrbitRadiusY * Math.Sin(dotRad);
+
+                var dot = new Ellipse
+                {
+                    Width = 6,
+                    Height = 6,
+                    Fill = new SolidColorBrush(sourceColor),
+                    IsHitTestVisible = false,
+                    Tag = $"OrbitDot_{source.Id}",
+                };
+                SetLeft(dot, dotX - 3);
+                SetTop(dot, dotY - 3);
+                Children.Insert(0, dot);
+            }
+            catch { /* Skip if color parsing fails */ }
+
+            // Reposition the source node
+            var node = Children.OfType<SourceNode>().FirstOrDefault(n => n.SourceVm.Id == source.Id);
+            if (node != null)
+            {
+                PositionNode(node);
+                UpdateConnectionLine(node);
+            }
+        }
     }
 
     private static SolidColorBrush BrushFromHex(string hex)

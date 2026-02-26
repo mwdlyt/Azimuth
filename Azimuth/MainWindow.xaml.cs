@@ -36,6 +36,15 @@ public partial class MainWindow : FluentWindow
         // Keyboard shortcuts via PreviewKeyDown (WPF eats some keys in InputBindings)
         PreviewKeyDown += OnPreviewKeyDown;
 
+        // Wire orbit panel events
+        OrbitPanel.OrbitChanged += OnOrbitPanelChanged;
+
+        // Sync orbit panel when selected source changes
+        _viewModel.PropertyChanged += OnViewModelPropertyChangedForOrbit;
+
+        // Refresh canvas orbit visuals on each orbit tick (~60fps)
+        _viewModel.OrbitTick += OnOrbitTick;
+
         Closed += (_, _) =>
         {
             _viewModel.Dispose();
@@ -107,6 +116,12 @@ public partial class MainWindow : FluentWindow
             _viewModel.ToggleSnapToGridCommand.Execute(null);
             e.Handled = true;
         }
+        else if (!ctrl && !shift && e.Key == Key.O)
+        {
+            _viewModel.ToggleOrbitOnSelected();
+            OrbitPanel.BindSource(_viewModel.SelectedSource);
+            e.Handled = true;
+        }
     }
 
     // ── Source Collection Changes ────────────────────────────
@@ -151,6 +166,35 @@ public partial class MainWindow : FluentWindow
             bool snap = _viewModel.IsSnapToGridEnabled;
             SpatialCanvas.SetGridEnabled(visible: snap, snap: snap);
         }
+    }
+
+    /// <summary>
+    /// Syncs the orbit panel binding when the selected source changes.
+    /// Also refreshes canvas orbit visuals via the orbit timer callback.
+    /// </summary>
+    private void OnViewModelPropertyChangedForOrbit(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.SelectedSource))
+        {
+            OrbitPanel.BindSource(_viewModel.SelectedSource);
+        }
+    }
+
+    /// <summary>
+    /// Handles orbit toggle changes from the orbit panel to refresh the orbit timer.
+    /// </summary>
+    private void OnOrbitPanelChanged(object? sender, EventArgs e)
+    {
+        _viewModel.RefreshOrbitTimer();
+        SpatialCanvas.RefreshOrbitVisuals();
+    }
+
+    /// <summary>
+    /// Refreshes canvas orbit visuals on each orbit animation tick.
+    /// </summary>
+    private void OnOrbitTick(object? sender, EventArgs e)
+    {
+        SpatialCanvas.RefreshOrbitVisuals();
     }
 
     // ── Sidebar Source Row Click ─────────────────────────────

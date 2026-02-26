@@ -34,4 +34,30 @@ public class AudioSource
 
     /// <summary>Hex color string for the node visual.</summary>
     public string Color { get; set; } = AppConfig.SourceColors[0];
+
+    // ── Orbit Properties ─────────────────────────────────────
+
+    /// <summary>Whether orbital motion is enabled for this source.</summary>
+    public bool OrbitEnabled { get; set; }
+
+    /// <summary>Horizontal radius of the elliptical orbit path in pixels.</summary>
+    public double OrbitRadiusX { get; set; } = 100.0;
+
+    /// <summary>Vertical radius of the elliptical orbit path in pixels.</summary>
+    public double OrbitRadiusY { get; set; } = 100.0;
+
+    /// <summary>Orbit speed in degrees per second.</summary>
+    public double OrbitSpeed { get; set; } = 45.0;
+
+    /// <summary>Whether the orbit rotates clockwise.</summary>
+    public bool OrbitClockwise { get; set; } = true;
+
+    /// <summary>X coordinate of the orbit center relative to canvas center.</summary>
+    public double OrbitCenterX { get; set; }
+
+    /// <summary>Y coordinate of the orbit center relative to canvas center.</summary>
+    public double OrbitCenterY { get; set; }
+
+    /// <summary>Current angle in degrees along the orbit path (serialized for scene resume).</summary>
+    public double OrbitAngle { get; set; }
 }
