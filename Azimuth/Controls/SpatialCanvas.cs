@@ -55,10 +55,15 @@ public class SpatialCanvas : Canvas
     private void OnCanvasMouseDown(object sender, MouseButtonEventArgs e)
     {
         // Only deselect if the click is on the canvas itself (not on a SourceNode)
-        if (e.OriginalSource == this || e.OriginalSource is Ellipse || e.OriginalSource is TextBlock)
         {
-            // Check that we didn't hit a SourceNode
-            var hit = e.OriginalSource as DependencyObject;
+            // Walk up the visual tree — but OriginalSource can be a non-Visual (e.g. Run),
+            // so start from the closest Visual ancestor instead.
+            DependencyObject? hit = e.OriginalSource as DependencyObject;
+
+            // Skip non-Visual elements (Run, Span, etc.) by walking logical tree first
+            while (hit != null && hit is not System.Windows.Media.Visual)
+                hit = LogicalTreeHelper.GetParent(hit);
+
             while (hit != null && hit != this)
             {
                 if (hit is SourceNode) return;
