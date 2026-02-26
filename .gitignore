@@ -1,30 +1,43 @@
-## .NET
+## .NET / Visual Studio
 bin/
 obj/
 *.user
 *.suo
-*.userprefs
+*.userosscache
 *.sln.docstates
 .vs/
 
-## NuGet
-*.nupkg
-packages/
-
-## Build
+## Build results
 [Dd]ebug/
 [Rr]elease/
 x64/
 x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
 bld/
 [Bb]in/
 [Oo]bj/
+[Ll]og/
+[Ll]ogs/
 
-## IDE
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+
+## Rider / JetBrains
 .idea/
-*.swp
-*~
+*.sln.iml
 
 ## OS
-Thumbs.db
 .DS_Store
+Thumbs.db
+desktop.ini
+
+## Task files (dev only)
+TASK.md
+TASK2.md
