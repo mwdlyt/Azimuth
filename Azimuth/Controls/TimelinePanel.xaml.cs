@@ -114,7 +114,7 @@ public partial class TimelinePanel : UserControl
             {
                 Text = FormatTime(vm.CurrentPosition) + " / " + FormatTime(vm.Duration),
                 FontSize = 9,
-                Foreground = new SolidColorBrush(Color.FromArgb(153, 232, 232, 240)),
+                Foreground = new SolidColorBrush(Color.FromArgb(153, 240, 240, 245)),
                 IsHitTestVisible = false,
             };
             Canvas.SetRight(durationText, 4);
@@ -175,7 +175,7 @@ public partial class TimelinePanel : UserControl
         }
         catch
         {
-            return new SolidColorBrush(Color.FromRgb(124, 92, 252)) { Opacity = opacity };
+            return new SolidColorBrush(Color.FromRgb(45, 212, 191)) { Opacity = opacity };
         }
     }
 

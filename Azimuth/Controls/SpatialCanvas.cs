@@ -107,7 +107,7 @@ public class SpatialCanvas : Canvas
             {
                 Width = r * 2,
                 Height = r * 2,
-                Stroke = BrushFromHex("#1A1A2E"),
+                Stroke = BrushFromHex("#1E1E2E"),
                 StrokeThickness = 1,
                 StrokeDashArray = pct < 1.0 ? new DoubleCollection { 4, 4 } : new DoubleCollection(),
                 IsHitTestVisible = false,
@@ -118,7 +118,7 @@ public class SpatialCanvas : Canvas
         }
 
         // Draw crosshairs (subtle)
-        var crossColor = BrushFromHex("#1A1A2E");
+        var crossColor = BrushFromHex("#1E1E2E");
         Children.Add(MakeLine(cx, cy - _radius, cx, cy + _radius, crossColor));
         Children.Add(MakeLine(cx - _radius, cy, cx + _radius, cy, crossColor));
 
@@ -133,8 +133,8 @@ public class SpatialCanvas : Canvas
         {
             Width = AppConfig.ListenerIconRadius * 2,
             Height = AppConfig.ListenerIconRadius * 2,
-            Fill = BrushFromHex("#1E1E30"),
-            Stroke = BrushFromHex("#3A3A50"),
+            Fill = BrushFromHex("#1E1E2E"),
+            Stroke = BrushFromHex("#2DD4BF"),
             StrokeThickness = 2,
             IsHitTestVisible = false,
         };
@@ -278,7 +278,7 @@ public class SpatialCanvas : Canvas
             Y2 = cy + node.SourceVm.Y,
             Stroke = BrushFromHex(node.SourceVm.Color),
             StrokeThickness = 1,
-            Opacity = 0.3,
+            Opacity = 0.2,
             IsHitTestVisible = false,
             Tag = node.SourceVm.Id,
         };

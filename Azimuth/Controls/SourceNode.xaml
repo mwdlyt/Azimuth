@@ -11,7 +11,7 @@
                  IsHitTestVisible="False">
             <Ellipse.Fill>
                 <RadialGradientBrush>
-                    <GradientStop Color="#7C5CFC" Offset="0.2"/>
+                    <GradientStop Color="#2DD4BF" Offset="0.2"/>
                     <GradientStop Color="Transparent" Offset="1.0"/>
                 </RadialGradientBrush>
             </Ellipse.Fill>
@@ -24,10 +24,10 @@
                  VerticalAlignment="Center"
                  StrokeThickness="2">
             <Ellipse.Fill>
-                <SolidColorBrush Color="#7C5CFC" Opacity="0.3"/>
+                <SolidColorBrush Color="#2DD4BF" Opacity="0.3"/>
             </Ellipse.Fill>
             <Ellipse.Stroke>
-                <SolidColorBrush x:Name="StrokeBrush" Color="#7C5CFC"/>
+                <SolidColorBrush x:Name="StrokeBrush" Color="#2DD4BF"/>
             </Ellipse.Stroke>
         </Ellipse>
 
@@ -36,7 +36,7 @@
                    Text="src"
                    FontSize="9"
                    FontWeight="SemiBold"
-                   Foreground="#E8E8F0"
+                   Foreground="#F0F0F5"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis"

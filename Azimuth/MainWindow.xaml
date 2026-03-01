@@ -8,7 +8,7 @@
         Height="800" Width="1280"
         MinHeight="600" MinWidth="900"
         WindowStartupLocation="CenterScreen"
-        Background="#0D0D0F"
+        Background="#0F0F17"
         ExtendsContentIntoTitleBar="True">
 
     <ui:FluentWindow.Resources>
@@ -18,7 +18,7 @@
 
         <!-- Muted text style -->
         <Style x:Key="MutedText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#6B6B80"/>
+            <Setter Property="Foreground" Value="#5A5A72"/>
             <Setter Property="FontSize" Value="11"/>
         </Style>
     </ui:FluentWindow.Resources>
@@ -44,7 +44,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left Sidebar -->
-            <Border Grid.Column="0" Background="#161622" CornerRadius="0" Padding="16">
+            <Border Grid.Column="0" Background="#151521" CornerRadius="0" Padding="16">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -56,7 +56,7 @@
 
                     <!-- App Title -->
                     <StackPanel Grid.Row="0" Margin="0,4,0,20">
-                        <TextBlock Text="&#x2726; Azimuth" FontSize="22" FontWeight="Bold" Foreground="#7C5CFC"/>
+                        <TextBlock Text="&#x2726; Azimuth" FontSize="22" FontWeight="Bold" Foreground="#2DD4BF"/>
                         <TextBlock Text="Spatial Audio Placement" Style="{StaticResource MutedText}" Margin="0,2,0,0"/>
                     </StackPanel>
 
@@ -120,14 +120,14 @@
                                 Margin="0,0,0,12"
                                 Visibility="{Binding RecentFiles.Count, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                         <TextBlock Text="R E C E N T" FontSize="10" FontWeight="Bold"
-                                   Foreground="#6B6B80" Margin="0,0,0,6"/>
+                                   Foreground="#5A5A72" Margin="0,0,0,6"/>
                         <ItemsControl ItemsSource="{Binding RecentFiles}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="Transparent" Cursor="Hand" Margin="0,0,0,2"
                                             MouseLeftButtonUp="RecentFile_Click" Tag="{Binding}">
                                         <TextBlock Text="{Binding Converter={x:Static converters:PathToFilenameConverter.Instance}}"
-                                                   Foreground="#9090A8" FontSize="11"
+                                                   Foreground="#A0A0B4" FontSize="11"
                                                    TextTrimming="CharacterEllipsis"
                                                    ToolTip="{Binding}"
                                                    Padding="4,3">
@@ -135,7 +135,7 @@
                                                 <Style TargetType="TextBlock">
                                                     <Style.Triggers>
                                                         <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter Property="Foreground" Value="#E8E8F0"/>
+                                                            <Setter Property="Foreground" Value="#F0F0F5"/>
                                                         </Trigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -155,7 +155,7 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Text="S O U R C E S" FontSize="10" FontWeight="Bold"
-                                   Foreground="#6B6B80" Margin="0,0,0,8"/>
+                                   Foreground="#5A5A72" Margin="0,0,0,8"/>
 
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                             <ListBox x:Name="SourceListBox" ItemsSource="{Binding Sources}"
@@ -170,7 +170,7 @@
                                 <ListBox.Resources>
                                     <!-- Remove default selection highlight -->
                                     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Transparent"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#E8E8F0"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#F0F0F5"/>
                                     <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="Transparent"/>
                                 </ListBox.Resources>
                                 <ListBox.ItemContainerStyle>
@@ -190,19 +190,19 @@
                                 </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Border CornerRadius="8" Padding="10" Margin="0,0,0,6"
+                                        <Border CornerRadius="10" Padding="12" Margin="0,0,0,8"
                                                 Cursor="Hand"
                                                 MouseLeftButtonDown="SourceRow_MouseLeftButtonDown"
                                                 Tag="{Binding}">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="#1A1A2E"/>
+                                                    <Setter Property="Background" Value="#1A1A28"/>
                                                     <Setter Property="BorderThickness" Value="1"/>
-                                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                                    <Setter Property="BorderBrush" Value="#2A2A3C"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                            <Setter Property="BorderBrush" Value="#7C5CFC"/>
-                                                            <Setter Property="Background" Value="#1F1A35"/>
+                                                            <Setter Property="BorderBrush" Value="{Binding Color, Converter={StaticResource HexToBrush}}"/>
+                                                            <Setter Property="Background" Value="#222234"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -219,7 +219,7 @@
                                                     <Ellipse Width="10" Height="10" Margin="0,0,8,0"
                                                              Fill="{Binding Color, Converter={StaticResource HexToBrush}}"
                                                              DockPanel.Dock="Left"/>
-                                                    <TextBlock Text="{Binding Name}" Foreground="#E8E8F0"
+                                                    <TextBlock Text="{Binding Name}" Foreground="#F0F0F5"
                                                                FontSize="12" FontWeight="SemiBold"
                                                                VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis"/>
@@ -307,11 +307,11 @@
                                  Visibility="{Binding IsTimelinePanelVisible, Converter={StaticResource BoolToVis}}"/>
 
         <!-- Status Bar -->
-        <Border Grid.Row="3" Background="#161622" Padding="12,6">
+        <Border Grid.Row="3" Background="#151521" Padding="12,6">
             <DockPanel>
-                <TextBlock Text="{Binding StatusText}" Foreground="#6B6B80" FontSize="11"
+                <TextBlock Text="{Binding StatusText}" Foreground="#5A5A72" FontSize="11"
                            DockPanel.Dock="Left"/>
-                <TextBlock Text="v1.0" Foreground="#3A3A50" FontSize="11"
+                <TextBlock Text="v1.0" Foreground="#5A5A72" FontSize="11"
                            DockPanel.Dock="Right" HorizontalAlignment="Right"/>
             </DockPanel>
         </Border>

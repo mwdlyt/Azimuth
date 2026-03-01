@@ -2,7 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:Azimuth.Converters"
-             Background="#0D0D0F">
+             Background="#0F0F17">
 
     <UserControl.Resources>
         <converters:HexToColorBrushConverter x:Key="HexToBrush"/>
@@ -15,16 +15,16 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <Border Grid.Row="0" Background="#161622" Padding="12,6">
-            <TextBlock Text="T I M E L I N E" FontSize="10" FontWeight="Bold" Foreground="#6B6B80"/>
+        <Border Grid.Row="0" Background="#151521" Padding="12,6">
+            <TextBlock Text="T I M E L I N E" FontSize="10" FontWeight="Bold" Foreground="#5A5A72"/>
         </Border>
 
         <!-- Source Timeline Rows -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#0D0D0F">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#0F0F17">
             <ItemsControl x:Name="TimelineItems" ItemsSource="{Binding Sources}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="#111118" BorderBrush="#1A1A2E" BorderThickness="0,0,0,1"
+                        <Border Background="#1A1A28" BorderBrush="#2A2A3C" BorderThickness="0,0,0,1"
                                 Padding="0" Height="40">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -37,13 +37,13 @@
                                             VerticalAlignment="Center">
                                     <Ellipse Width="8" Height="8" Margin="0,0,6,0"
                                              Fill="{Binding Color, Converter={StaticResource HexToBrush}}"/>
-                                    <TextBlock Text="{Binding Name}" Foreground="#E8E8F0" FontSize="11"
+                                    <TextBlock Text="{Binding Name}" Foreground="#F0F0F5" FontSize="11"
                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                                MaxWidth="90"/>
                                 </StackPanel>
 
                                 <!-- Waveform track area -->
-                                <Canvas x:Name="WaveformCanvas" Grid.Column="1" Background="#161622"
+                                <Canvas x:Name="WaveformCanvas" Grid.Column="1" Background="#1A1A28"
                                         ClipToBounds="True"
                                         MouseLeftButtonDown="WaveformCanvas_MouseLeftButtonDown"
                                         MouseMove="WaveformCanvas_MouseMove"

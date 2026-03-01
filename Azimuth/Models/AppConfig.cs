@@ -8,21 +8,22 @@ namespace Azimuth.Models;
 public static class AppConfig
 {
     // ── Theme Colors ──────────────────────────────────────────
-    public const string BackgroundHex = "#0D0D0F";
-    public const string SurfaceHex = "#161622";
-    public const string CanvasBackgroundHex = "#0A0A12";
-    public const string AccentHex = "#7C5CFC";
-    public const string TextPrimaryHex = "#E8E8F0";
-    public const string TextMutedHex = "#6B6B80";
+    public const string BackgroundHex = "#0F0F17";
+    public const string SurfaceHex = "#1A1A28";
+    public const string CanvasBackgroundHex = "#0C0C14";
+    public const string AccentHex = "#2DD4BF";
+    public const string TextPrimaryHex = "#F0F0F5";
+    public const string TextMutedHex = "#5A5A72";
 
     // ── Source Node Colors ────────────────────────────────────
     public static readonly string[] SourceColors =
     {
-        "#7C5CFC", // violet
-        "#FF6B6B", // coral
-        "#4ECDC4", // teal
-        "#FFD93D", // amber
-        "#6BCB77", // green
+        "#2DD4BF", // teal
+        "#F87171", // coral
+        "#60A5FA", // blue
+        "#FBBF24", // amber
+        "#A78BFA", // lavender
+        "#34D399", // green
     };
 
     // ── Canvas ────────────────────────────────────────────────
@@ -33,7 +34,7 @@ public static class AppConfig
 
     // ── Grid / Snap ───────────────────────────────────────────
     public const double GridSize = 30.0;
-    public const string GridColorHex = "#151525";
+    public const string GridColorHex = "#1E1E2E";
 
     // ── Spatial Audio ─────────────────────────────────────────
     public const float MinVolume = 0.05f;

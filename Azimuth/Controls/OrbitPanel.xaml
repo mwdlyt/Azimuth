@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              Width="260">
-    <Border Background="#161622" Padding="16">
+    <Border Background="#151521" Padding="16">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -16,14 +16,15 @@
                 <Ellipse Width="10" Height="10" Margin="0,0,8,0" DockPanel.Dock="Left"
                          x:Name="ColorDot"/>
                 <TextBlock x:Name="SourceNameText" Text="Source"
-                           Foreground="#E8E8F0" FontSize="13" FontWeight="SemiBold"
+                           Foreground="#F0F0F5" FontSize="13" FontWeight="SemiBold"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
 
             <!-- Enable Orbit Toggle -->
-            <Border Grid.Row="1" Background="#1A1A2E" CornerRadius="6" Padding="12,8" Margin="0,0,0,12">
+            <Border Grid.Row="1" Background="#1A1A28" CornerRadius="10" Padding="14,10"
+                    BorderBrush="#2A2A3C" BorderThickness="1" Margin="0,0,0,12">
                 <DockPanel>
-                    <TextBlock Text="Enable Orbit" Foreground="#E8E8F0" FontSize="12"
+                    <TextBlock Text="Enable Orbit" Foreground="#F0F0F5" FontSize="12"
                                VerticalAlignment="Center" DockPanel.Dock="Left"/>
                     <CheckBox x:Name="OrbitToggle" HorizontalAlignment="Right"
                               Checked="OrbitToggle_Changed" Unchecked="OrbitToggle_Changed"/>
@@ -36,13 +37,13 @@
                 <StackPanel>
                     <!-- ═══ Shape Section ═══ -->
                     <TextBlock Text="S H A P E" FontSize="10" FontWeight="Bold"
-                               Foreground="#6B6B80" Margin="0,0,0,8"/>
+                               Foreground="#5A5A72" Margin="0,0,0,8"/>
 
                     <!-- Radius X -->
                     <DockPanel Margin="0,0,0,4">
-                        <TextBlock Text="Radius X" Foreground="#9090A8" FontSize="11"
+                        <TextBlock Text="Radius X" Foreground="#A0A0B4" FontSize="11"
                                    VerticalAlignment="Center" DockPanel.Dock="Left"/>
-                        <TextBlock x:Name="RadiusXValue" Foreground="#E8E8F0" FontSize="11"
+                        <TextBlock x:Name="RadiusXValue" Foreground="#F0F0F5" FontSize="11"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                    DockPanel.Dock="Right"/>
                     </DockPanel>
@@ -59,9 +60,9 @@
 
                     <!-- Radius Y -->
                     <DockPanel Margin="0,0,0,4">
-                        <TextBlock Text="Radius Y" Foreground="#9090A8" FontSize="11"
+                        <TextBlock Text="Radius Y" Foreground="#A0A0B4" FontSize="11"
                                    VerticalAlignment="Center" DockPanel.Dock="Left"/>
-                        <TextBlock x:Name="RadiusYValue" Foreground="#E8E8F0" FontSize="11"
+                        <TextBlock x:Name="RadiusYValue" Foreground="#F0F0F5" FontSize="11"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                    DockPanel.Dock="Right"/>
                     </DockPanel>
@@ -71,13 +72,13 @@
 
                     <!-- ═══ Motion Section ═══ -->
                     <TextBlock Text="M O T I O N" FontSize="10" FontWeight="Bold"
-                               Foreground="#6B6B80" Margin="0,0,0,8"/>
+                               Foreground="#5A5A72" Margin="0,0,0,8"/>
 
                     <!-- Speed -->
                     <DockPanel Margin="0,0,0,4">
-                        <TextBlock Text="Speed" Foreground="#9090A8" FontSize="11"
+                        <TextBlock Text="Speed" Foreground="#A0A0B4" FontSize="11"
                                    VerticalAlignment="Center" DockPanel.Dock="Left"/>
-                        <TextBlock x:Name="SpeedValue" Foreground="#E8E8F0" FontSize="11"
+                        <TextBlock x:Name="SpeedValue" Foreground="#F0F0F5" FontSize="11"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                    DockPanel.Dock="Right"/>
                     </DockPanel>
@@ -87,7 +88,7 @@
 
                     <!-- Direction -->
                     <DockPanel Margin="0,0,0,16">
-                        <TextBlock Text="Direction" Foreground="#9090A8" FontSize="11"
+                        <TextBlock Text="Direction" Foreground="#A0A0B4" FontSize="11"
                                    VerticalAlignment="Center" DockPanel.Dock="Left"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <ui:Button x:Name="CwButton" Content="CW" FontSize="10"
@@ -101,19 +102,19 @@
 
                     <!-- ═══ Position Section ═══ -->
                     <TextBlock Text="P O S I T I O N" FontSize="10" FontWeight="Bold"
-                               Foreground="#6B6B80" Margin="0,0,0,8"/>
+                               Foreground="#5A5A72" Margin="0,0,0,8"/>
 
                     <DockPanel Margin="0,0,0,4">
-                        <TextBlock Text="Center X" Foreground="#9090A8" FontSize="11"
+                        <TextBlock Text="Center X" Foreground="#A0A0B4" FontSize="11"
                                    VerticalAlignment="Center" DockPanel.Dock="Left"/>
-                        <TextBlock x:Name="CenterXValue" Foreground="#E8E8F0" FontSize="11"
+                        <TextBlock x:Name="CenterXValue" Foreground="#F0F0F5" FontSize="11"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                    DockPanel.Dock="Right"/>
                     </DockPanel>
                     <DockPanel Margin="0,0,0,8">
-                        <TextBlock Text="Center Y" Foreground="#9090A8" FontSize="11"
+                        <TextBlock Text="Center Y" Foreground="#A0A0B4" FontSize="11"
                                    VerticalAlignment="Center" DockPanel.Dock="Left"/>
-                        <TextBlock x:Name="CenterYValue" Foreground="#E8E8F0" FontSize="11"
+                        <TextBlock x:Name="CenterYValue" Foreground="#F0F0F5" FontSize="11"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                    DockPanel.Dock="Right"/>
                     </DockPanel>
