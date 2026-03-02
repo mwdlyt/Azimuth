@@ -17,7 +17,7 @@
 
 <p align="center">
   <!-- Replace with a real screenshot: open Azimuth with sources + orbit paths, save as docs/screenshot.png -->
-  <!-- <img alt="Azimuth" width="900" src="docs/screenshot.png"> -->
+  <img alt="Azimuth" width="900" src="docs/screenshot.png">
 </p>
 
 ## About
@@ -133,3 +133,4 @@ Azimuth/
 ## License
 
 [MIT](LICENSE)
+
