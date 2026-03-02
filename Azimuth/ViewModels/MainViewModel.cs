@@ -667,10 +667,20 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             RefreshOrbitTimer();
             TrackRecentFile(filePath);
         }
-        catch (Exception ex)
+        catch (InvalidDataException)
         {
-            MessageBox.Show($"Failed to open scene:\n{ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Failed to open scene: the file is corrupted or not a valid Azimuth scene.",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (FileNotFoundException)
+        {
+            MessageBox.Show("Failed to open scene: the file could not be found.",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (Exception)
+        {
+            MessageBox.Show("Failed to open scene. The file may be corrupted or inaccessible.",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -717,10 +727,15 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
             TrackRecentFile(path);
         }
-        catch (Exception ex)
+        catch (UnauthorizedAccessException)
         {
-            MessageBox.Show($"Failed to save scene:\n{ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Failed to save scene: access denied. Check file permissions.",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (Exception)
+        {
+            MessageBox.Show("Failed to save scene. The destination may be read-only or inaccessible.",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -757,11 +772,11 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
             StatusText = $"Exported: {Path.GetFileName(dlg.FileName)}";
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             StatusText = "Export failed";
-            MessageBox.Show($"Failed to export:\n{ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Failed to export audio. Check that the destination is writable and audio sources are accessible.",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
