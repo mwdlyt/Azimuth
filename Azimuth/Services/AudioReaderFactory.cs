@@ -32,7 +32,7 @@ public static class AudioReaderFactory
     public static WaveStream CreateReader(string filePath)
     {
         if (!File.Exists(filePath))
-            throw new FileNotFoundException($"Audio file not found: {filePath}");
+            throw new FileNotFoundException($"Audio file not found: {Path.GetFileName(filePath)}");
 
         var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
