@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #0f0f17;
+  color: #f0f0f5;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+.maplibregl-canvas {
+  outline: none;
+}
+
+@layer components {
+  .btn-accent {
+    @apply rounded-md bg-accent py-2 text-sm font-semibold text-black transition hover:brightness-110;
+  }
+  .btn-warn {
+    @apply rounded-md bg-amber-500 py-2 text-sm font-semibold text-black transition hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply rounded-md border border-edge bg-panel2 px-3 py-2 text-sm transition hover:bg-edge;
+  }
+  .input {
+    @apply rounded-md border border-edge bg-panel2 px-3 py-2 text-sm outline-none focus:border-accent;
+  }
+}

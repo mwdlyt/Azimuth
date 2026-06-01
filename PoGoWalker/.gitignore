@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+service/build/
+service/dist/
+service/*.spec
+.pytest_cache/
+
+# Node / Vite
+ui/node_modules/
+ui/dist/
+*.local
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/binaries/
+src-tauri/gen/
+
+# Secrets
+.env
+
+# OS
+.DS_Store
+Thumbs.db
